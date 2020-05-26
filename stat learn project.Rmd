@@ -1,0 +1,44 @@
+---
+title: "Statistical Learning Project"
+author: "Caria Natascia, Cozzolino Claudia and Petrella Alfredo"
+date: "26 maggio 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r }
+#import dataset
+crimedata <- read.csv("crimedata.csv", na.strings="?")
+View(crimedata)
+
+#handle missing values
+
+#inspect total NA
+sum(is.na(crimedata))
+mean(is.na(crimedata))
+
+#install.packages("varhandle", dependencies = T)
+library(varhandle)
+nadf<- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
+
+#nadf dataframe with columns that present NA 
+nadf
+
+#find columns with > 55% NA
+coltodrop<-as.vector(nadf$column_name[nadf$ratio_of_NA>0.55])
+coltodrop <- c(coltodrop,'fold')
+coltodrop
+
+#drop non predictive column
+cleandf<-crimedata[,!(names(crimedata) %in% coltodrop)]
+
+#pairs plot prova
+pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop  ,data=cleandf)
+
+scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop,)
+
+```
+
