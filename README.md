@@ -2,7 +2,7 @@
 Statistical Learning part B
 
 
- - communities.data original dataset from UCI
+ - communities.data original dataset from UCI (https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime)
 
  - communities.names original dataset documentation
 
@@ -10,4 +10,4 @@ Statistical Learning part B
 
  - communityna.csv csv cleaned version, removed 25 columns with many null and the 'fold' column not useful for prediction (1994 x 102)
 
- - ipynb notebook with the code for the cleaning and some trial plot
+ - SL clean dataset.ipynipynb notebook with the code for the cleaning and some trial plot
