@@ -10,4 +10,4 @@ Statistical Learning part B
 
  - communityna.csv csv cleaned version, removed 25 columns with many null and the 'fold' column not useful for prediction (1994 x 102)
 
- - SL clean dataset.ipynipynb notebook with the code for the cleaning and some trial plot
+ - SL clean dataset.ipynb notebook with the code for the cleaning and some trial plot
