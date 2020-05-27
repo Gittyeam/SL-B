@@ -9,36 +9,153 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Aim of the project
+
+# Dataset Description
+
+# Exploratory Data Analysis
+
+We know from documentation that missing values are stored as "?".
+
 ```{r }
-#import dataset
+# import dataset
 crimedata <- read.csv("crimedata.csv", na.strings="?")
 View(crimedata)
+dim(crimedata)
+```
+2215 rows and 147 columns
 
-#handle missing values
+Attributes information:
 
-#inspect total NA
+* 4 non-predictive (communityname, state, countyCode, communityCode, fold)
+* 125 predictive
+* 18 potential predictor (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries, burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
+
+```{r}
+# check if variables communityname and state are stored as factors (others to check?)
+is.factor(crimedata$communityname)
+is.factor(crimedata$state)
+```
+
+## Missing values
+
+```{r}
+# handle missing values
+
+# inspect total NA
 sum(is.na(crimedata))
 mean(is.na(crimedata))
+```
 
-#install.packages("varhandle", dependencies = T)
+```{r}
+# install.packages("varhandle", dependencies = T)
 library(varhandle)
 nadf<- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 
-#nadf dataframe with columns that present NA 
+# nadf dataframe with columns that present NA 
 nadf
+```
 
-#find columns with > 55% NA
+```{r}
+# find columns with > 55% NA
 coltodrop<-as.vector(nadf$column_name[nadf$ratio_of_NA>0.55])
 coltodrop <- c(coltodrop,'fold')
 coltodrop
+```
+There are 41 columns with missing values, 25 of them with more than 55% of the data missing.
+Among them:
+* 3 non-predictive (countyCode, communityCode, fold)
+* Many "Lemas" ---> Check info on these variables to understand what they refer
+* Policing information
+* Potential Predictor (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
 
-#drop non predictive column
+From documentaion:
+
+The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).
+
+The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').
+
+### Possible ways to handle missing values:
+Drop all columns with > 55% NA.
+
+```{r}
+# drop columns with > 55% NA
 cleandf<-crimedata[,!(names(crimedata) %in% coltodrop)]
-
-#pairs plot prova
-pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop  ,data=cleandf)
-
-scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop,)
-
 ```
 
+Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per capita income for people with 'other' heritage), which has only one missing value.
+
+* drop all raws with at least one missing value.
+* for the potential predictors (crimes), substitute a missing value with the average computed over the state a community belongs. We can decide to do the same for the variable OtherPerCap.
+* leave NaN value and consider it as another category.
+
+```{r}
+# functions to handle na values based on their type or meaning
+na.to.0 <- function(x) replace(x, is.na(x), 0)
+na.to.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+```
+
+```{r}
+# example, columns to be decided (original ds unchanged)
+cleandf2 <- data.frame(cleandf)
+cleandf2['population'] = lapply(cleandf['population'],na.to.0)
+cleandf2['agePct12t21'] = lapply(cleandf['agePct12t21'],na.to.mean)
+View(cleandf2)
+```
+
+```{r}
+scaleddf <- data.frame(cleandf2)
+scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
+# scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
+# se vogliamo la solita conviene scriverla a mano
+```
+
+
+## State Aggregation - data analysis
+
+```{r}
+# Violent Crimes per 100K Population - State aggregation
+vc_state <- aggregate(crimedata[, "ViolentCrimesPerPop"], list(crimedata$state), mean)
+names(vc_state)[names(vc_state) == "Group.1"] <- "state"
+names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
+```
+
+```{r}
+# Population - State aggregation
+pop_state <- aggregate(crimedata[, "population"], list(crimedata$state), sum)
+names(pop_state)[names(pop_state) == "Group.1"] <- "state"
+names(pop_state)[names(pop_state) == "x"] <- "PopTot"
+```
+
+```{r include=FALSE}
+# install.packages("usmap")
+library(usmap)
+library(ggplot2)
+```
+
+```{r, fig.height = 3, fig.align = "center"}
+par(mfrow=c(1,1))
+plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "red") + 
+  scale_fill_continuous(low = "white", high= "red", name = "Violent Crimes", label = scales::comma) + 
+  theme(legend.position = "right")
+```
+
+
+```{r, fig.height = 3, fig.align = "center"}
+par(mfrow=c(1,1))
+plot_usmap(data = pop_state, values = "PopTot", color = "red") + 
+  scale_fill_continuous(low = "white", high= "red", name = "Population", label = scales::comma) + 
+  theme(legend.position = "right")
+```
+Montana, Nebraska and Hawaii are missing
+
+## Pairs plot
+
+```{r}
+# pairs plot prova
+pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop  ,data=cleandf)
+```
+
+```{r}
+scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop,)
+```
