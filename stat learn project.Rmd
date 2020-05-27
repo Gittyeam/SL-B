@@ -86,6 +86,7 @@ Drop all columns with > 55% NA.
 ```{r}
 # drop columns with > 55% NA
 cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
+View(cleandf)
 ```
 
 Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
@@ -165,4 +166,19 @@ pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,dat
 
 ```{r}
 scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop)
-```
+``` 
+* raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
+* numbUrban or pctUrban keep only one (maybe the second, so that we can eventually discard population)
+  same for  NumUnderPov & PctPopUnderPov
+            NumKidsBornNeverMar & PctKidsBornNeverMar (total missing)
+            HousVacant & PctHousOccup & PctHousOwnOccup
+            OwnOccLowQuart & OwnOccMedVal & OwnOccHiQuart & OwnOccQrange
+            RentQrange (difference between 2 prev cols)
+            Lemas(...) ALREADY REMOVED in cleandf
+            PopDens (again, delete pop or similar)
+            
+            ?Target? & ?Target?PerPoP
+* medIncome and medfamincome so similar
+* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): at what rate?)
+  same for PctBornSameState & PctSame(...)
+* PctRec(...): same but over the full population
