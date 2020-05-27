@@ -55,7 +55,6 @@ nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRU
 
 # nadf dataframe with columns that present NA 
 nadf
-# View(nadf) # ??? solo a me nadf non dà output?
 ```
 
 ```{r}
@@ -165,5 +164,5 @@ pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,dat
 ```
 
 ```{r}
-scatter.smooth(PopDens,ViolentCrimesPerPop,data=cleandf)
+scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop)
 ```
