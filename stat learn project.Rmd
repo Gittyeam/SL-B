@@ -29,7 +29,8 @@ Attributes information:
 
 * 4 non-predictive (communityname, state, countyCode, communityCode, fold)
 * 125 predictive
-* 18 potential predictor (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries, burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
+* 18 potential predictor (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries,
+  burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
 
 ```{r}
 # check if variables communityname and state are stored as factors (others to check?)
@@ -71,9 +72,13 @@ Among them:
 
 From documentaion:
 
-The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).
+The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the 
+United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of
+rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted
+communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).
 
-The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').
+The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United
+States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').
 
 ### Possible ways to handle missing values:
 Drop all columns with > 55% NA.
@@ -83,10 +88,12 @@ Drop all columns with > 55% NA.
 cleandf<-crimedata[,!(names(crimedata) %in% coltodrop)]
 ```
 
-Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per capita income for people with 'other' heritage), which has only one missing value.
+Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
+capita income for people with 'other' heritage), which has only one missing value.
 
 * drop all raws with at least one missing value.
-* for the potential predictors (crimes), substitute a missing value with the average computed over the state a community belongs. We can decide to do the same for the variable OtherPerCap.
+* for the potential predictors (crimes), substitute a missing value with the average computed over the state a community belongs. We can
+  decide to do the same for the variable OtherPerCap.
 * leave NaN value and consider it as another category.
 
 ```{r}
