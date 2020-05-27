@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 We know from documentation that missing values are stored as "?".
 
-```{r }
+```{r}
 # import dataset
 crimedata <- read.csv("crimedata.csv", na.strings="?")
 View(crimedata)
@@ -51,15 +51,16 @@ mean(is.na(crimedata))
 ```{r}
 # install.packages("varhandle", dependencies = T)
 library(varhandle)
-nadf<- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
+nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 
 # nadf dataframe with columns that present NA 
 nadf
+# View(nadf) # ??? solo a me nadf non dà output?
 ```
 
 ```{r}
 # find columns with > 55% NA
-coltodrop<-as.vector(nadf$column_name[nadf$ratio_of_NA>0.55])
+coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.55])
 coltodrop <- c(coltodrop,'fold')
 coltodrop
 ```
@@ -85,7 +86,7 @@ Drop all columns with > 55% NA.
 
 ```{r}
 # drop columns with > 55% NA
-cleandf<-crimedata[,!(names(crimedata) %in% coltodrop)]
+cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
 ```
 
 Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
@@ -113,8 +114,8 @@ View(cleandf2)
 ```{r}
 scaleddf <- data.frame(cleandf2)
 scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
-# scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
-# se vogliamo la solita conviene scriverla a mano
+# ??? scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
+# ??? se vogliamo la solita conviene scriverla a mano
 ```
 
 
@@ -160,9 +161,9 @@ Montana, Nebraska and Hawaii are missing
 
 ```{r}
 # pairs plot prova
-pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop  ,data=cleandf)
+pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,data=cleandf)
 ```
 
 ```{r}
-scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop,)
+scatter.smooth(PopDens,ViolentCrimesPerPop,data=cleandf)
 ```
