@@ -57,10 +57,23 @@ nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRU
 nadf
 ```
 
+There are other suspecious values equal to 0.00 ma ce ne freghiamo ???
+
+```{r}
+zero_count_fun <- function(x) sum(x==0, na.rm = TRUE)
+zero_count <- lapply(cleandf, zero_count_fun)[lapply(cleandf, zero_count_fun)!=0]
+names(zero_count)
+```
+
+```{r}
+# Suspecious zeros ???
+c("numbUrban", "pctUrban")
+```
+
 ```{r}
 # find columns with > 55% NA
 coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.55])
-coltodrop <- c(coltodrop,'fold')
+coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
 coltodrop
 ```
 There are 41 columns with missing values, 25 of them with more than 55% of the data missing.
@@ -112,19 +125,6 @@ for(i in c(28,seq(105,120))) {
   NA_position <- which(is.na(cleandf[[i]]))
   cleandf[[i]][NA_position] <- match_table[cleandf$state[NA_position]]
 }
-```
-
-There are other suspecious values equal to 0.00 ma ce ne freghiamo
-
-```{r}
-zero_count_fun <- function(x) sum(x==0, na.rm = TRUE)
-zero_count <- lapply(cleandf, zero_count_fun)[lapply(cleandf, zero_count_fun)!=0]
-names(zero_count)
-```
-
-```{r}
-# Suspecious zeros
-c("numbUrban", "pctUrban")
 ```
 
 ```{r}
