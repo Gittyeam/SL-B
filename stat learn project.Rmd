@@ -97,18 +97,34 @@ capita income for people with 'other' heritage), which has only one missing valu
   decide to do the same for the variable OtherPerCap.
 * leave NaN value and consider it as another category.
 
+
 ```{r}
-# functions to handle na values based on their type or meaning
-na.to.0 <- function(x) replace(x, is.na(x), 0)
-na.to.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+rowtodrop <- as.numeric(rownames(cleandf[cleandf$state %in% c("IL","MI","MN","KS","VT"),]))
+
+cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
 ```{r}
-# example, columns to be decided (original ds unchanged)
-cleandf2 <- data.frame(cleandf)
-cleandf2['population'] = lapply(cleandf['population'],na.to.0)
-cleandf2['agePct12t21'] = lapply(cleandf['agePct12t21'],na.to.mean)
-View(cleandf2)
+# Substitute a missing value with the average computed over the state
+
+for(i in c(28,seq(105,120))) {
+  match_table <- tapply(cleandf[[i]], cleandf$state, mean, na.rm=TRUE)
+  NA_position <- which(is.na(cleandf[[i]]))
+  cleandf[[i]][NA_position] <- match_table[cleandf$state[NA_position]]
+}
+```
+
+There are other suspecious values equal to 0.00 ma ce ne freghiamo
+
+```{r}
+zero_count_fun <- function(x) sum(x==0, na.rm = TRUE)
+zero_count <- lapply(cleandf, zero_count_fun)[lapply(cleandf, zero_count_fun)!=0]
+names(zero_count)
+```
+
+```{r}
+# Suspecious zeros
+c("numbUrban", "pctUrban")
 ```
 
 ```{r}
