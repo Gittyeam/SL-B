@@ -162,6 +162,47 @@ sum(is.na(cleandf))
 rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 ```
 
+### Correlation insight
+
+
+```{r}
+corrdf <- cleandf[1:104] #???
+corrdf <- corrdf[sapply(corrdf,is.numeric)]
+
+cm <- cor(corrdf, use = 'complete.obs')
+cma <- abs(cm) > 0.9
+(sum(cma)-dim(corrdf)[2])/2
+
+# install.packages('corrplot')
+library(corrplot)
+corrplot(cm,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35) # order=!!!
+corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+
+corrcol <- c()
+for(i in 2:dim(cm)[1]) {
+  for(j in 1:(i-1)) {
+    if(cma[i,j]) {
+      corrcol = c(corrcol,c(i,j))
+    }
+  }
+}
+
+corrcolname <- matrix(lapply(corrcol,function(x) colnames(corrdf)[x]),nrow=2)
+corrcolname
+
+rem9 = c(1,9,11,17,20,28,61,65,88,92,93,94)
+
+corrdfind <- corrdf[-rem9]
+# View(corrdfind)
+
+cm <- cor(corrdfind, use='complete.obs')
+cma <- abs(cm) > 0.9
+
+colnames(corrdf)[20]
+# perCapInc vs whitePerCap
+
+corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+
 ### Standardization / Normalization
 
 ```{r}
@@ -285,6 +326,9 @@ pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,dat
 ```{r}
 scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop)
 ``` 
+
+## eventually useful stuff
+
 * raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
 * numbUrban or pctUrban keep only one (maybe the second, so that we can eventually discard population)
   same for  NumUnderPov & PctPopUnderPov
@@ -297,7 +341,6 @@ scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop)
             
             ?Target? & ?Target?PerPoP
 * medIncome and medfamincome so similar
-* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): at
-what rate?)
+* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): at what rate?)
   same for PctBornSameState & PctSame(...)
 * PctRec(...): same but over the full population
