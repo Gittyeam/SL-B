@@ -190,11 +190,52 @@ normdf <- cleandf
 normdf[seq(3,dim(normdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], normalization)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 scaleddf <- data.frame(cleandf2)
 scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
-# ??? scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
-# ??? se vogliamo la solita conviene scriverla a mano
+# scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
+# se vogliamo la solita conviene scriverla a mano
+```
+
+### Outliers
+
+```{r}
+# Remove row if one of its value is
+# 3 times greater than the upper interquartile bound or
+# 3 times lower than the lower interquartile bound
+
+is.out <- function(x){
+  Q <- quantile(x, probs=c(.25, .75))
+  iqr <- IQR(x)
+  up <-  Q[2]+3*iqr # Upper bound  
+  low <- Q[1]-3*iqr # Lower bound
+  out <- (x < low | x > up)
+  return(out)
+}
+
+outdf <- cleandf
+outdf[seq(3,dim(outdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], is.out)
+
+odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
+rowtodrop <- odf$row_name
+
+newdf <-  cleandf[!(rownames(cleandf) %in% rowtodrop),]
+```
+
+```{r}
+# Normalization of the dataset without drastic outliers
+
+normalization <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+}
+
+normnewdf <- newdf
+normnewdf[seq(3,dim(normnewdf)[2])] <- lapply(newdf[seq(3,dim(newdf)[2])], normalization)
+```
+
+```{r}
+# Remove all variables from environment excpet ...
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf")))
 ```
 
 ## State Aggregation - data analysis
