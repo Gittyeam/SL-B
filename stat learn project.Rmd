@@ -166,18 +166,24 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 
 ```{r}
-corrdf <- cleandf[1:104] #???
+# restrict to numeric independent attributes
+corrdf <- cleandf[1:102]
 corrdf <- corrdf[sapply(corrdf,is.numeric)]
 
+# correlation matrix
 cm <- cor(corrdf, use = 'complete.obs')
+# only strongly correlated attributes highlighted
 cma <- abs(cm) > 0.9
+# number of strong correlations
 (sum(cma)-dim(corrdf)[2])/2
 
+# correlation matrix and filter plot
 # install.packages('corrplot')
 library(corrplot)
 corrplot(cm,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35) # order=!!!
 corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
 
+# ??? correlated couples
 corrcol <- c()
 for(i in 2:dim(cm)[1]) {
   for(j in 1:(i-1)) {
@@ -186,22 +192,24 @@ for(i in 2:dim(cm)[1]) {
     }
   }
 }
-
 corrcolname <- matrix(lapply(corrcol,function(x) colnames(corrdf)[x]),nrow=2)
 corrcolname
 
+# ??? ignore it right now, could help in the future
+
 rem9 = c(1,9,11,17,20,28,61,65,88,92,93,94)
 
-corrdfind <- corrdf[-rem9]
+corrdf_ind <- corrdf[-rem9]
 # View(corrdfind)
 
-cm <- cor(corrdfind, use='complete.obs')
+# final correlation matrix and filter
+cm <- cor(corrdf_ind, use='complete.obs')
 cma <- abs(cm) > 0.9
 
-colnames(corrdf)[20]
 # perCapInc vs whitePerCap
 
 corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+```
 
 ### Standardization / Normalization
 
@@ -213,12 +221,12 @@ scaledf[seq(3,dim(scaledf)[2])] <- scale(cleandf[seq(3,dim(cleandf)[2])] )
 
 ```{r}
 # Standardization using an home made function (⌐■_■)
-standardizaion <- function(x) {
+standardization <- function(x) {
 return ((x - mean(x)) / sd(x))
 }
 
 standf <- cleandf
-standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardizaion)
+standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
 ```
 
 ```{r}
