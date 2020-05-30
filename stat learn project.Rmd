@@ -287,6 +287,39 @@ normnewdf[seq(3,dim(normnewdf)[2])] <- lapply(newdf[seq(3,dim(newdf)[2])], norma
 rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf")))
 ```
 
+## Principal Component Analysis
+
+```{r}
+# choose the version of the df you prefer (cleandf, scaledf, normdf)
+PCAdf <- cleandf[,3:102]
+
+# PCA computation
+pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
+
+str(pc)
+# first k principal components
+k <- 40
+plot(pc, npcs=k)
+
+barplot(pc$loadings[,1], cex.names=0.5)
+
+#install.packages('factoextra')
+#library(factoextra)
+#fviz_pca_var(pc, repel=TRUE) # too messy
+```
+
+
+## Singular Value Decomposition
+
+```{r}
+# choose the version of the df you prefer (scaledf, normdf)
+SVDdf <- scaledf[,3:102]
+
+# SVD
+sv <- svd(SVDdf)
+```
+
+
 ## State Aggregation - data analysis
 
 ```{r}
