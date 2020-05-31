@@ -253,7 +253,7 @@ scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
 # 3 times greater than the upper interquartile bound or
 # 3 times lower than the lower interquartile bound
 
-is.out <- function(x){
+is.out.IQR <- function(x){
   Q <- quantile(x, probs=c(.25, .75))
   iqr <- IQR(x)
   up <-  Q[2]+3*iqr # Upper bound  
@@ -262,13 +262,21 @@ is.out <- function(x){
   return(out)
 }
 
+is.out.sd <- function(x){
+  sd <- sd(x)
+  up <-  mean(x)+3*sd # Upper bound  
+  low <- mean(x)-3*sd # Lower bound
+  out <- (x < low | x > up)
+  return(out)
+}
+
 outdf <- cleandf
-outdf[seq(3,dim(outdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], is.out)
+outdf[seq(3,dim(outdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], is.out.sd)
 
 odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
 rowtodrop <- odf$row_name
 
-newdf <-  cleandf[!(rownames(cleandf) %in% rowtodrop),]
+newdf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
 ```{r}
@@ -290,8 +298,8 @@ rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "
 ## Principal Component Analysis
 
 ```{r}
-# choose the version of the df you prefer (cleandf, scaledf, normdf)
-PCAdf <- cleandf[,3:102]
+# choose the version of the df you prefer (cleandf, normnewdf, scalednewdf ???)
+PCAdf <- normnewdf[,3:102]
 
 # PCA computation
 pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
@@ -313,10 +321,16 @@ barplot(pc$loadings[,1], cex.names=0.5)
 
 ```{r}
 # choose the version of the df you prefer (scaledf, normdf)
-SVDdf <- scaledf[,3:102]
+SVDdf <- normnewdf[,3:102]
 
 # SVD
 sv <- svd(SVDdf)
+
+# NOT RUN {
+barplot(sv$d)
+D <- diag(sv$d)
+U <- sv$u
+V <- sv$v
 ```
 
 
