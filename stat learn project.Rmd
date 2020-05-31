@@ -311,6 +311,9 @@ plot(pc, npcs=k)
 
 barplot(pc$loadings[,1], cex.names=0.5)
 
+infl1 = colnames(normnewdf)[abs(pc$loadings[,1])>0.15]
+infl1
+
 #install.packages('factoextra')
 #library(factoextra)
 #fviz_pca_var(pc, repel=TRUE) # too messy
