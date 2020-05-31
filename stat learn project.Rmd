@@ -311,7 +311,7 @@ plot(pc, npcs=k)
 
 barplot(pc$loadings[,1], cex.names=0.5)
 
-infl1 = colnames(normnewdf)[abs(pc$loadings[,1])>0.15]
+infl1 <- colnames(PCAdf)[abs(pc$loadings[,1])>0.15]
 infl1
 
 #install.packages('factoextra')
@@ -322,19 +322,42 @@ infl1
 
 ## Singular Value Decomposition
 
+An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$ associated to the model, obtaining two unitary matrices $U$ and $V$ and a rectangular diagonal matrix of singular values $S$ such that $X = USV^T$, where the values on the diagonal of $S$ are sorted in descendent order and the first $k$ columns of $V$ select the correspondent first $k$ most informative combinantions of the attributes of the original dataset, i.e. if we call $V_k$ the matrix containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our dataset with just $k$ columns that contains the most part of information of $X$.
+
 ```{r}
 # choose the version of the df you prefer (scaledf, normdf)
 SVDdf <- normnewdf[,3:102]
 
-# SVD
+# SVD on the correlation matrix
 sv <- svd(SVDdf)
 
-# NOT RUN {
+# plot the singolar values
 barplot(sv$d)
-D <- diag(sv$d)
-U <- sv$u
+
+# SVD reduced model
+k <- 20
 V <- sv$v
+matrix(SVDdf)
+
+SVDreddf <- data.matrix(SVDdf) %*% V[,1:k]
+
+# check that U and V are the same in this case
+sum(!C.sv$u-C.sv$v<0.000001)
 ```
+
+```{r, eval=FALSE, include=FALSE}
+C <- cov(SVDdf)
+
+# plot the original singular values (our actual diagonal is squared)
+barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
+barplot(sv$d)
+
+sv$d
+sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
+
+#???
+```
+
 
 
 ## State Aggregation - data analysis
