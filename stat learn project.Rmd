@@ -164,7 +164,6 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 ### Correlation insight
 
-
 ```{r}
 # restrict to numeric independent attributes
 corrdf <- cleandf[1:102]
@@ -340,9 +339,6 @@ V <- sv$v
 matrix(SVDdf)
 
 SVDreddf <- data.matrix(SVDdf) %*% V[,1:k]
-
-# check that U and V are the same in this case
-sum(!C.sv$u-C.sv$v<0.000001)
 ```
 
 ```{r, eval=FALSE, include=FALSE}
@@ -376,7 +372,7 @@ names(pop_state)[names(pop_state) == "Group.1"] <- "state"
 names(pop_state)[names(pop_state) == "x"] <- "PopTot"
 ```
 
-```{r include=FALSE}
+```{r, include=FALSE}
 # install.packages("usmap")
 library(usmap)
 library(ggplot2)
