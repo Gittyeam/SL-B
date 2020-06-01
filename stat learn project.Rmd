@@ -534,6 +534,9 @@ boxplot(dataf$PctPopUnderPov~dataf$state, cex.names=0.1,las=2,col=c("#00AFBB", "
 ``` 
 ## Models
 
+### Split in Train and Test/ validation Folds
+set seeds... a roverato sembrava piacere tanto sta cosa :)
+
 ### Linear regression
 ```{r}
 #use normalized-outliers 'free' data
