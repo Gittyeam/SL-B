@@ -532,7 +532,44 @@ boxplot(dataf$PctPopUnderPov~dataf$state, cex.names=0.1,las=2,col=c("#00AFBB", "
 #non hanno senso :(
 #hist(dataf$PctPopUnderPov)
 ``` 
- 
+## Models
+
+### Linear regression
+```{r}
+#use normalized-outliers 'free' data
+m0<-lm( normnewdf$ViolentCrimesPerPop~. , data=normnewdf[,3:98])
+summary(m0)
+
+#use corresponding pc 
+pc0 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
+summary(pc0)
+
+#use only first 15 comp
+pc01 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
+summary(pc01)
+
+#use normalized-outliers and high correlated 'free' data
+m1<-lm( normnewdfcorr$ViolentCrimesPerPop~. , data=normnewdfcorr[,3:80])
+summary(m1)
+
+#use corresponding pc 
+pc1 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
+summary(pc1)
+
+#use only first 10 comp
+pc11 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
+summary(pc11)
+
+#use only comp with '***' significativity
+pc12 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+summary(pc12)
+
+plot(pc12)
+
+
+
+scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
+```
 
 ## eventually useful stuff
 
