@@ -571,6 +571,26 @@ plot(pc12)
 scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
 ```
 
+
+### Multivariate Linear Regression
+```{r}
+#predict all the crime features... 
+m2 <- lm(data.matrix(normnewdfcorr[,81:98]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+
+#summary(m2) #long output
+
+```
+
+### LDA e QDA?
+
+### Bayesian regression?
+Issue... non abbiamo possibili valori ipotesi iniziali ...
+
+### Binary classification models and KNN
+pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... ha senso? 
+
+
+
 ## eventually useful stuff
 
 * raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
