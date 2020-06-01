@@ -535,7 +535,6 @@ boxplot(dataf$PctPopUnderPov~dataf$state, cex.names=0.1,las=2,col=c("#00AFBB", "
 ## Models
 
 ### Split in Train and Test/ validation Folds
-set seeds... a roverato sembrava piacere tanto sta cosa :)
 
 ### Linear regression
 ```{r}
@@ -574,13 +573,39 @@ plot(pc12)
 scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
 ```
 
+### Polynomial Regression
+```{r}
+# fit using a second order polynomial in all var
+
+polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~", paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
+
+m2 <- lm(polyformula, data=as.data.frame(pccorr$scores))
+summary(m2)
+
+plot(m2)
+
+
+
+# fit using a 3 order polynomial in all var
+
+polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~", paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
+
+m3 <- lm(polyformula, data=as.data.frame(pccorr$scores))
+summary(m3)
+
+plot(m3)
+
+
+
+#usare solo se si hanno poche var in considerazione! dai risultati sembra che gli ordini superiori al primo non siano molto influenti...
+```
 
 ### Multivariate Linear Regression
 ```{r}
 #predict all the crime features... 
-m2 <- lm(data.matrix(normnewdfcorr[,81:98]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+m3 <- lm(data.matrix(normnewdfcorr[,81:98]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
 
-#summary(m2) #long output
+#summary(m3) #long output
 
 ```
 
@@ -592,7 +617,8 @@ Issue... non abbiamo possibili valori ipotesi iniziali ...
 ### Binary classification models and KNN
 pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... ha senso? 
 
-
+### Comparing results
+Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
 ## eventually useful stuff
 
