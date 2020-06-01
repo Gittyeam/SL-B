@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
 
 # Aim of the project
@@ -20,7 +20,7 @@ We know from documentation that missing values are stored as "?".
 ```{r}
 # import dataset
 crimedata <- read.csv("crimedata.csv", na.strings="?")
-View(crimedata)
+#View(crimedata)
 dim(crimedata)
 ```
 2215 rows and 147 columns
@@ -29,10 +29,10 @@ Attributes information:
 
 * 4 non-predictive (communityname, state, countyCode, communityCode, fold)
 * 125 predictive
-* 18 potential predictor (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries,
+* 18 potential predictor (??? intendete response?) (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries,
   burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
 
-From UCI description we know that the variables communityname and state are nominal while the remaining are all numeric.
+From UCI description (see https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized) we know that the variables communityname and state are nominal while the remaining are all numeric.
 ```{r}
 # check if variables communityname and state are stored as factors
 is.factor(crimedata$communityname)
@@ -61,14 +61,15 @@ library(varhandle)
 nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 
 # nadf dataframe with columns that present NA 
-nadf
+#nadf
 ```
 There are 41 columns with missing values, many of them with more than 50% of the data missing.
 Among them:
+
 * 3 non-predictive (countyCode, communityCode, fold)
 * Many "Lemas" ---> Check info on these variables to understand what they refer
 * Policing information
-* Potential Predictor (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
+* Potential Predictor (??? intendete response?) (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
 
 From documentaion:
 
@@ -93,7 +94,12 @@ of other columns). We decide to keep the other columns with zero values.
 ```{r}
 # Find columns with > 50% NA
 coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
+
+#add other columns to remove
 coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
+
+#add variable that are statistical measures of others (quartiles) 
+coltodrop <- c(coltodrop, "OwnOccLowQuart","OwnOccHiQuart", "RentLowQ", "RentHighQ")
 coltodrop
 ```
 
@@ -102,7 +108,7 @@ Firstly, all columns with > 50% NA are removed.
 ```{r}
 # Drop columns with > 50% NA
 cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
-View(cleandf)
+#View(cleandf)
 ```
 
 Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
@@ -166,7 +172,7 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 ```{r}
 # restrict to numeric independent attributes
-corrdf <- cleandf[1:102]
+corrdf <- cleandf[1:98]
 corrdf <- corrdf[sapply(corrdf,is.numeric)]
 
 # correlation matrix
@@ -196,7 +202,7 @@ corrcolname
 
 # ??? ignore it right now, could help in the future
 
-rem9 = c(1,9,11,17,20,28,61,65,88,92,93,94)
+rem9 = c(1,9,11,17,20,28,61,65,88,92,93,94) #in caso da rifare perche' tolte colonnee :(
 
 corrdf_ind <- corrdf[-rem9]
 # View(corrdfind)
@@ -208,6 +214,24 @@ cma <- abs(cm) > 0.9
 # perCapInc vs whitePerCap
 
 corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+
+
+
+
+# altri comandi per trovare high correlated... (aiuto non volevo mettermi alla tv :3)
+corrdf <- cleandf[1:98]
+corrdf <- corrdf[sapply(corrdf,is.numeric)]
+rs <- cor(corrdf, use = "complete.obs")
+diag(rs) <- NA
+col_has_over_90 <- apply(rs, 2, function(x) any(x > .9, na.rm = TRUE))
+
+colnames(rs[, col_has_over_90])
+dim(rs[, col_has_over_90])
+
+#selezionate a mano e interpretando significato
+coltodropcorr<-c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters","MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent", "PctRecentImmig")
+cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
+
 ```
 
 ### Standardization / Normalization
@@ -276,6 +300,17 @@ odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = T
 rowtodrop <- odf$row_name
 
 newdf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
+
+
+
+outdf <- cleandfcorr
+outdf[seq(3,dim(outdf)[2])] <- lapply(cleandfcorr[seq(3,dim(cleandfcorr)[2])], is.out.sd)
+
+odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
+rowtodrop <- odf$row_name
+
+newdfcorr <- cleandfcorr[!(rownames(cleandfcorr) %in% rowtodrop),]
+
 ```
 
 ```{r}
@@ -287,18 +322,22 @@ return ((x - min(x)) / (max(x) - min(x)))
 
 normnewdf <- newdf
 normnewdf[seq(3,dim(normnewdf)[2])] <- lapply(newdf[seq(3,dim(newdf)[2])], normalization)
+
+
+normnewdfcorr <- newdfcorr
+normnewdfcorr[seq(3,dim(normnewdfcorr)[2])] <- lapply(newdfcorr[seq(3,dim(newdfcorr)[2])], normalization)
 ```
 
 ```{r}
 # Remove all variables from environment excpet ...
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf")))
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf","cleandfcorr","newdfcorr","normnewdfcorr")))
 ```
 
 ## Principal Component Analysis
 
 ```{r}
 # choose the version of the df you prefer (cleandf, normnewdf, scalednewdf ???)
-PCAdf <- normnewdf[,3:102]
+PCAdf <- normnewdf[,3:(dim(normnewdf)[2]-18)]
 
 # PCA computation
 pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
@@ -306,16 +345,50 @@ pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation mat
 str(pc)
 # first k principal components
 k <- 40
-plot(pc, npcs=k)
+plot(pc, npcs=k, cex.names=0.5,las=2, col="#00AFBB", main='Principal Components')
 
-barplot(pc$loadings[,1], cex.names=0.5)
+barplot(pc$loadings[,1], cex.names=0.5,las=2, col=  "#FC4E07")
 
 infl1 <- colnames(PCAdf)[abs(pc$loadings[,1])>0.15]
 infl1
 
 #install.packages('factoextra')
-#library(factoextra)
-#fviz_pca_var(pc, repel=TRUE) # too messy
+library(factoextra)
+fviz_pca_var(pc,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = T,     # Avoid text overlapping
+             select.var = list(contrib = 15)
+             )
+
+
+
+
+PCAdfcorr <- normnewdfcorr[,3:(dim(normnewdfcorr)[2]-18)]
+
+# PCA computation
+pccorr <- princomp(PCAdfcorr, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
+
+str(pccorr)
+# first k principal components
+k <- 40
+plot(pccorr, npcs=k, cex.names=0.5,las=2, col="#00AFBB", main='Principal Components')
+
+barplot(pccorr$loadings[,1], cex.names=0.5,las=2, col=  "#FC4E07")
+
+infl1corr <- colnames(PCAdfcorr)[abs(pccorr$loadings[,1])>0.15]
+infl1corr
+
+#install.packages('factoextra')
+library(factoextra)
+fviz_pca_var(pccorr,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = T,     # Avoid text overlapping
+             select.var = list(contrib = 15)
+             )
+
+
 ```
 
 
@@ -339,21 +412,24 @@ V <- sv$v
 matrix(SVDdf)
 
 SVDreddf <- data.matrix(SVDdf) %*% V[,1:k]
+
+#C.sv??
+# check that U and V are the same in this case
+#sum(!C.sv$u-C.sv$v<0.000001)
 ```
 
 ```{r, eval=FALSE, include=FALSE}
 C <- cov(SVDdf)
 
 # plot the original singular values (our actual diagonal is squared)
-barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
+#barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
 barplot(sv$d)
 
 sv$d
-sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
+#sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
 
 #???
 ```
-
 
 
 ## State Aggregation - data analysis
@@ -393,6 +469,34 @@ plot_usmap(data = pop_state, values = "PopTot", color = "red") +
 ```
 Montana, Nebraska and Hawaii are missing
 
+
+Maps plot on mean values per state
+```{r}
+#plot mean some predictor and all response vars per state
+
+#data=cleandf
+dataf=newdfcorr
+
+
+for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
+  dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
+  names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
+  names(dataaggr)[names(dataaggr) == "x"] <- colnames(dataf)[i]
+  
+  mycol=c("#00AFBB", "#E7B800", "#FC4E07")[i%%3 + 1]
+
+
+  pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
+    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) +     theme(legend.position = "right")
+  
+  print(pl)
+
+}
+
+
+
+```
+
 ## Pairs plot
 
 ```{r}
@@ -401,8 +505,34 @@ pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,dat
 ```
 
 ```{r}
-scatter.smooth(cleandf$PopDens,cleandf$ViolentCrimesPerPop)
+#scatter plot between all predictor vs ViolentCrimesPerPop (tantii)
+par(mfrow=c(2,2))
+
+#data=cleandf
+dataf=normnewdfcorr
+
+#seq(3,dim(dataf)[2]-18)
+
+#for(i in seq(3,dim(dataf)[2]-18)) {
+  
+  #scatter.smooth(dataf[,i],dataf$ViolentCrimesPerPop, xlab=colnames(dataf[i]), ylab='ViolentCrimesPerPop')
+
+#}
+
+par(mfrow=c(1,1))
+
+```
+
+
+```{r}
+boxplot(dataf$PctPopUnderPov~dataf$state, cex.names=0.1,las=2,col=c("#00AFBB", "#E7B800", "#FC4E07"))
 ``` 
+
+```{r}
+#non hanno senso :(
+#hist(dataf$PctPopUnderPov)
+``` 
+ 
 
 ## eventually useful stuff
 
