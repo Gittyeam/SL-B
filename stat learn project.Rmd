@@ -97,9 +97,6 @@ coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
 
 #add other columns to remove
 coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
-
-#add variable that are statistical measures of others (quartiles) 
-#coltodrop <- c(coltodrop, "OwnOccLowQuart","OwnOccHiQuart", "RentLowQ", "RentHighQ")
 coltodrop
 ```
 
@@ -170,61 +167,92 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 ### Correlation insight
 
-```{r}
-# restrict to numeric independent attributes
-corrdf <- cleandf[1:102]
-corrdf <- corrdf[sapply(corrdf,is.numeric)]
-View(corrdf)
-# correlation matrix
-cm <- cor(corrdf, use = 'complete.obs')
-# only strongly correlated attributes highlighted
-cma <- abs(cm) > 0.9
-# number of strong correlations
-(sum(cma)-dim(corrdf)[2])/2
+In the following few lines of code we perform a first manual skimming of stongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
 
-# correlation matrix and filter plot
+```{r}
+# restrict to the predictive numeric attributes
+corrdf <- cleandf[1:102]
+corrdf <- corrdf[sapply(corrdf,is.numeric)] # first two columns removed
+#View(corrdf)
+
+# correlation matrix
+cm <- cor(corrdf, use='complete.obs')
+
 # install.packages('corrplot')
 library(corrplot)
-corrplot(cm,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35) # order=!!!
+# correlation matrix plot
+corrplot(cm,title='Initial correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
+
+# correlation tradeoff
+threshold <- 0.7
+# only strongly correlated attributes highlighted
+cma <- abs(cm) > threshold
+# number of strong correlations
+(sum(cma) - dim(corrdf)[2]) / 2
+
+# filtered correlation matrix plot
+corrplot(cma,title='Filtered correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 ```
 
+??? Spiega le scelte e soprattutto quella a 0.7!
 
 ```{r}
-# columns with correlation with more meaningful ones higher than 0.9 in absolute value
-rem9 = c(1,9,11,17,20,28,30,39,41,44,45,54,56,58,59,60,61,64,65,74,80,82,83,85,86,90,91,92)
-#colnames(corrdf)[rem9]
+# columns with correlation with more meaningful ones higher than threshold in absolute value
+rem9 <- c(1,9,11,17,20,21,28,30,38,39,41,44,45,50,54,56,58,59,60,61,64,65,74,80,82,83,85,86,90,91,92)
+rem8 <- c(rem9,2,4,8,13,14,18,29,43,46,49,51,55,62,69,81,84,95)
+rem7 <- c(rem8,16,31,32,63,70,71,96)
+#colnames(corrdf)[rem7]
 
-corrdf_ind <- corrdf[-rem9]
-# View(corrdfind)
+corrdf_ind <- corrdf[-rem7]
 
 # final correlation matrix and filter
 cm_ind <- cor(corrdf_ind, use='complete.obs')
-cma_ind <- abs(cm_ind) > 0.9
+cma_ind <- abs(cm_ind) > threshold
 
-# perCapInc vs whitePerCap (21 vs 22)
-# PctBSorMore vs PctOccupMgmtProf (32 vs 38)
-# NumKidsBornNeverMar vs NumImmig (50 vs 52)
+# resulting filtered correlation matrix plot
+corrplot(cma_ind, title='Filtered correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
+# 0.9
+# OK perCapInc del. vs whitePerCap (21 del. vs 22, use average)
+# OK PctBSorMore kept vs PctOccupMgmtProf (32 kept vs 38, solved by 0.8)
+# OK NumKidsBornNeverMar del. vs NumImmig (50 del. vs 52, solved by 0.8)
+# 0.8
+# OK racepvtblack vs racePctWhite (3 kept vs 4, let's keep minorities)
+# OK agePct12t21 kept vs agePct12t29 (7 kept vs 8, solved by 0.7)
+# OK medIncome del. vs whitePerCap (13 del. vs 22, use average)
+# OK pctWPubAsst del. vs PctUnemployed (18 del. vs 33, solved by 0.7)
+# OK PctPopUnderPov del. vs PctHousNoPhone (29 del. vs 78, solved by 0.7)
+# OK PctYoungKids2Par del. vs PctTeen2Par (46 del. vs 47, solved by 0.7)
+# OK PctWorkMomYoungKids kept vs PctWorkMom (48 kept vs 49, unanimity)
+# OK PctImmigRecent kept vs PctImmigRec8 (53 kept vs 55)
+# OK PctSameHouse85 kept vs PctSameCity85 (94 kept vs 95, more informative)
+# 0.7
+# OK NumImmig and HousVacant (52 and 72, unanimity)
 
-corrplot(cma_ind,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+coltodropcorr <- colnames(corrdf)[rem7]
 
+cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
 
+# final correlation matrix plot
+corrplot(cm_ind, title='Final correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+```
 
+```{r, eval=FALSE, include=FALSE}
+# eventually useful code
 
-# altri comandi per trovare high correlated... (aiuto non volevo mettermi alla tv :3)
-corrdf <- cleandf[1:98]
-corrdf <- corrdf[sapply(corrdf,is.numeric)]
-rs <- cor(corrdf, use = "complete.obs")
+# altri comandi per trovare highly correlated... (aiuto non volevo mettermi alla tv :3)
+rs <- cor(corrdf, use="complete.obs")
 diag(rs) <- NA
+
+# rimuove tutte le colonne che abbiano almeno una correlazione, perdiamo informazioni :/
 col_has_over_90 <- apply(rs, 2, function(x) any(x > .9, na.rm = TRUE))
 
 colnames(rs[, col_has_over_90])
-dim(rs[, col_has_over_90])
+# vs
+colnames(corrdf)[rem9]
 
-#selezionate a mano e interpretando significato
-coltodropcorr<-c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters","MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent", "PctRecentImmig")
-cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
-
+# selezionate a mano e interpretando significato
+coltodropcorr <- c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters","MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent", "PctRecentImmig")
 ```
 
 ### Standardization / Normalization
@@ -293,7 +321,6 @@ odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = T
 rowtodrop <- odf$row_name
 
 newdf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
-
 
 
 outdf <- cleandfcorr
