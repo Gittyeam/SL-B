@@ -99,14 +99,14 @@ coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
 coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
 
 #add variable that are statistical measures of others (quartiles) 
-coltodrop <- c(coltodrop, "OwnOccLowQuart","OwnOccHiQuart", "RentLowQ", "RentHighQ")
+#coltodrop <- c(coltodrop, "OwnOccLowQuart","OwnOccHiQuart", "RentLowQ", "RentHighQ")
 coltodrop
 ```
 
 ### Possible ways to handle missing values:
 Firstly, all columns with > 50% NA are removed.
 ```{r}
-# Drop columns with > 50% NA
+# Drop columns with > 50% NA and clearly redundant ones
 cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
 #View(cleandf)
 ```
@@ -172,9 +172,9 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 ```{r}
 # restrict to numeric independent attributes
-corrdf <- cleandf[1:98]
+corrdf <- cleandf[1:102]
 corrdf <- corrdf[sapply(corrdf,is.numeric)]
-
+View(corrdf)
 # correlation matrix
 cm <- cor(corrdf, use = 'complete.obs')
 # only strongly correlated attributes highlighted
@@ -186,34 +186,27 @@ cma <- abs(cm) > 0.9
 # install.packages('corrplot')
 library(corrplot)
 corrplot(cm,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35) # order=!!!
-corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+```
 
-# ??? correlated couples
-corrcol <- c()
-for(i in 2:dim(cm)[1]) {
-  for(j in 1:(i-1)) {
-    if(cma[i,j]) {
-      corrcol = c(corrcol,c(i,j))
-    }
-  }
-}
-corrcolname <- matrix(lapply(corrcol,function(x) colnames(corrdf)[x]),nrow=2)
-corrcolname
 
-# ??? ignore it right now, could help in the future
-
-rem9 = c(1,9,11,17,20,28,61,65,88,92,93,94) #in caso da rifare perche' tolte colonnee :(
+```{r}
+# columns with correlation with more meaningful ones higher than 0.9 in absolute value
+rem9 = c(1,9,11,17,20,28,30,39,41,44,45,54,56,58,59,60,61,64,65,74,80,82,83,85,86,90,91,92)
+#colnames(corrdf)[rem9]
 
 corrdf_ind <- corrdf[-rem9]
 # View(corrdfind)
 
 # final correlation matrix and filter
-cm <- cor(corrdf_ind, use='complete.obs')
-cma <- abs(cm) > 0.9
+cm_ind <- cor(corrdf_ind, use='complete.obs')
+cma_ind <- abs(cm_ind) > 0.9
 
-# perCapInc vs whitePerCap
+# perCapInc vs whitePerCap (21 vs 22)
+# PctBSorMore vs PctOccupMgmtProf (32 vs 38)
+# NumKidsBornNeverMar vs NumImmig (50 vs 52)
 
-corrplot(cma,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
+
+corrplot(cma_ind,title='Correlation matrix',method='shade',type='lower',tl.pos='l',tl.cex=0.35)
 
 
 
