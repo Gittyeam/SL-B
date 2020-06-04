@@ -8,16 +8,10 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
-```{r, include=FALSE}
-Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
-Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
-        rgb(1, 0.82, 0.4, 0.7),
-        rgb(0.02, 0.84, 0.63, 0.7),
-        rgb(0.07, 0.54, 0.7, 0.7),
-        rgb(0.03, 0.23, 0.3, 0.7))
-```
+
 ```{r include=FALSE}
 library(car)
+#install.packages("corrplot")
 library(ggplot2)
 #install.packages("usmap")
 library(usmap)
@@ -182,6 +176,14 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 ```
 
 # Exploratory Data Analysis - Assessing Assumptions for Linear Models
+```{r, include=FALSE}
+Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
+Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
+        rgb(1, 0.82, 0.4, 0.7),
+        rgb(0.02, 0.84, 0.63, 0.7),
+        rgb(0.07, 0.54, 0.7, 0.7),
+        rgb(0.03, 0.23, 0.3, 0.7))
+```
 
 ```{r}
 # Violent Crimes per 100K Population - State aggregation - Mean
@@ -220,7 +222,6 @@ qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
 qqline(log(cleandf$ViolentCrimesPerPop +1))
 par(mfrow=c(1,1))
 ```
-
 
 ```{r}
 violent_names <- c("murders", "rapes", "robberies", "assaults")
@@ -823,7 +824,8 @@ scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
 ```{r}
 # fit using a second order polynomial in all var
 
-polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~", paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
+polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~",
+paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
 
 m2 <- lm(polyformula, data=as.data.frame(pccorr$scores))
 summary(m2)
@@ -834,7 +836,8 @@ plot(m2)
 
 # fit using a 3 order polynomial in all var
 
-polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~", paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
+polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~",
+paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
 
 m3 <- lm(polyformula, data=as.data.frame(pccorr$scores))
 summary(m3)
