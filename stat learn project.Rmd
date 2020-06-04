@@ -329,10 +329,12 @@ The model assumptions are:
 - Normality and Independence of $\epsilon_i$.
 
 #### Linearity
-The plots of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in the data.
+The plots of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in
+the data.
 
 #### Homoschedasticity
-The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
+The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible solution
+is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
 ```{r}
 reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
@@ -360,7 +362,10 @@ We assess normality looking to the QQplot....
 ### Other Possible Problems
 
 #### Outliers
-The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute value are possible outliers.
+The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider
+the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
+by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute
+value are possible outliers.
 
 Note: Why 3? The Studentized Residuals are approximated by a N(0,1). The probability to observe a value greater than 3 is 0.001349898.
 ```{r}
@@ -396,11 +401,14 @@ plot(reg.out3)
 par(mfrow=c(1,1))
 ```
 
-The RSE is 0.65 when the outlier is included in the regression and it is 0.59 when the outlier is removed. Since the RSE is used to compute all conﬁdence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the outliers the $R^2$ increses from 0.67 to 0.7.
+The RSE is 0.65 when the outlier is included in the regression and it is 0.59 when the outlier is removed. Since the RSE is used to
+compute all conﬁdence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
+outliers the $R^2$ increses from 0.67 to 0.7.
 Care should be taken in the decision of taking or dropping outliers.
 
 #### High Leverage Points
-In order to quantify an observation’s leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+In order to quantify an observation’s leverage, we compute the leverage statistic. If a given observation has a leverage statistic that
+greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
 
 ```{r}
 plot(hatvalues(reg.out2), rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
@@ -413,7 +421,8 @@ E ora....???
 
 ### Correlation insight
 
-In the following few lines of code we perform a first manual skimming of stongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
+In the following few lines of code we perform a first manual skimming of stongly dependent variables removing, between the most
+correlated ones, the more redundant and meaningless.
 
 ```{r}
 # restrict to the predictive numeric attributes
@@ -498,7 +507,10 @@ colnames(rs[, col_has_over_90])
 colnames(corrdf)[rem9]
 
 # selezionate a mano e interpretando significato
-coltodropcorr <- c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters","MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent", "PctRecentImmig")
+coltodropcorr <-
+c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters",
+"MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent",
+"PctRecentImmig")
 ```
 
 ### Standardization / Normalization
@@ -660,7 +672,12 @@ fviz_pca_var(pccorr,
 
 ## Singular Value Decomposition
 
-An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$ associated to the model, obtaining two unitary matrices $U$ and $V$ and a rectangular diagonal matrix of singular values $S$ such that $X = USV^T$, where the values on the diagonal of $S$ are sorted in descendent order and the first $k$ columns of $V$ select the correspondent first $k$ most informative combinantions of the attributes of the original dataset, i.e. if we call $V_k$ the matrix containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our dataset with just $k$ columns that contains the most part of information of $X$.
+An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$
+associated to the model, obtaining two unitary matrices $U$ and $V$ and a rectangular diagonal matrix of singular values $S$ such that
+$X = USV^T$, where the values on the diagonal of $S$ are sorted in descendent order and the first $k$ columns of $V$ select the
+correspondent first $k$ most informative combinantions of the attributes of the original dataset, i.e. if we call $V_k$ the matrix
+containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our dataset with just $k$ columns that contains the most part
+of information of $X$.
 
 ```{r}
 # choose the version of the df you prefer (scaledf, normdf)
@@ -717,7 +734,8 @@ for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)
 
 
   pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
-    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) +     theme(legend.position = "right")
+    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) + 
+    theme(legend.position = "right")
   
   print(pl)
 
@@ -862,6 +880,7 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
             
             ?Target? & ?Target?PerPoP
 * medIncome and medfamincome so similar
-* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): at what rate?)
+* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): 
+at what rate?)
   same for PctBornSameState & PctSame(...)
 * PctRec(...): same but over the full population
