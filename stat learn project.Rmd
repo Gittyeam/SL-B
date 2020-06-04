@@ -8,12 +8,28 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 ```
+```{r, include=FALSE}
+Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
+Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
+        rgb(1, 0.82, 0.4, 0.7),
+        rgb(0.02, 0.84, 0.63, 0.7),
+        rgb(0.07, 0.54, 0.7, 0.7),
+        rgb(0.03, 0.23, 0.3, 0.7))
+```
+```{r include=FALSE}
+library(car)
+library(ggplot2)
+#install.packages("usmap")
+library(usmap)
+# install.packages("varhandle", dependencies = T)
+library(varhandle)
+```
 
 # Aim of the project
 
 # Dataset Description
 
-# Exploratory Data Analysis
+# Data Cleaning
 
 We know from documentation that missing values are stored as "?".
 
@@ -164,6 +180,236 @@ sum(is.na(cleandf))
 # Remove all variables from environment excpet the cleaned and the original dataset
 rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 ```
+
+# Exploratory Data Analysis - Assessing Assumptions for Linear Models
+
+```{r}
+# Violent Crimes per 100K Population - State aggregation - Mean
+vc_state <- aggregate(cleandf[, "ViolentCrimesPerPop"], list(cleandf$state), mean)
+names(vc_state)[names(vc_state) == "Group.1"] <- "state"
+names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
+```
+
+```{r, fig.height = 3, fig.align = "center"}
+par(mfrow=c(1,1))
+plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "Violent Crimes",label=scales::comma) +
+  theme(legend.position = "right")
+```
+
+```{r}
+summary(vc_state$ViolentCrimesMean)
+```
+
+```{r}
+par(mfrow=c(1,2))
+hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(cleandf$ViolentCrimesPerPop))
+
+hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(cleandf$ViolentCrimesPerPop +1)))
+par(mfrow=c(1,1))
+```
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(cleandf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(cleandf$ViolentCrimesPerPop)
+
+qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(cleandf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+violent_names <- c("murders", "rapes", "robberies", "assaults")
+violPerPop_names <- c("murdPerPop", "rapesPerPop", "robbbPerPop", "assaultPerPop")
+
+violent <- cleandf[, (colnames(cleandf) %in% violent_names)]
+violPerPop <- cleandf[, (colnames(cleandf) %in% violPerPop_names)]
+```
+
+```{r}
+par(mfrow = c(2,2))
+boxplot(violent, outline = TRUE, col = Col[seq(1:4)])
+boxplot(violent, outline = FALSE, col = Col[seq(1:4)])
+
+boxplot(violPerPop, outline = TRUE, col = Col[seq(1:4)])
+boxplot(violPerPop, outline = FALSE, col = Col[seq(1:4)])
+par(mfrow=c(1,1))
+```
+
+```{r}
+# Non Violent Crimes per 100K Population - State aggregation - Mean
+nvc_state <- aggregate(cleandf[, "nonViolPerPop"], list(cleandf$state), mean)
+names(nvc_state)[names(nvc_state) == "Group.1"] <- "state"
+names(nvc_state)[names(nvc_state) == "x"] <- "NonViolentCrimesMean"
+```
+
+```{r, fig.height = 3, fig.align = "center"}
+par(mfrow=c(1,1))
+plot_usmap(data = nvc_state, values = "NonViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "Non Violent Crimes",label=scales::comma) +
+  theme(legend.position = "right")
+```
+
+```{r}
+par(mfrow=c(1,2))
+hist(cleandf$nonViolPerPop, prob=TRUE, breaks=30, col=Col[2], main="Non Violent Crimes")
+lines(density(cleandf$nonViolPerPop))
+
+hist(log(cleandf$nonViolPerPop+1), prob=TRUE, breaks=30, col=Col[2], main="log(Non Violent Crimes +1)")
+lines(density(log(cleandf$nonViolPerPop+1)))
+par(mfrow=c(1,1))
+```
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(cleandf$nonViolPerPop, main="Non Violent Crimes")
+qqline(cleandf$nonViolPerPop)
+
+qqnorm(log(cleandf$nonViolPerPop +1), main="log(Non Violent Crimes +1)")
+qqline(log(cleandf$nonViolPerPop +1))
+par(mfrow=c(1,1))
+```
+
+```{r}
+nonViol_names <- c("burglaries", "larcenies", "autoTheft", "arsons")
+nonViolPerPop_names <- c("burglPerPop", "larcPerPop", "autoTheftPerPop", "arsonsPerPop")
+
+nonViol <- cleandf[, (colnames(cleandf) %in% nonViol_names)]
+nonViolPerPop <- cleandf[, (colnames(cleandf) %in% nonViolPerPop_names)]
+```
+
+```{r}
+par(mfrow = c(2,2))
+boxplot(nonViol, outline = TRUE, col = Col[seq(1:4)])
+boxplot(nonViol, outline = FALSE, col = Col[seq(1:4)])
+
+boxplot(nonViolPerPop, outline = TRUE, col = Col[seq(1:4)])
+boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)])
+par(mfrow=c(1,1))
+```
+
+## Diagnostic Tests - Multiple linear regression: predictor = ViolentCrimesPerPop
+
+Remove non predictive variables:
+communityname, state, all crimes except variable ViolentCrimesPerPop
+```{r}
+coltodrop <- c(1,2, seq(103,120)[-17])
+
+df <- cleandf[,-coltodrop]
+```
+
+Multiple Linear Regression
+```{r}
+reg.out <- lm(df$ViolentCrimesPerPop~., data=df)
+```
+
+```{r}
+se  <- summary(reg.out)$sigma         # se
+rsq <- summary(reg.out)$r.squared     # R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out)
+par(mfrow=c(1,1))
+```
+
+
+### Assessing Model Assumptions:
+The model assumptions are:
+
+- Linearity of the response-predictor relationships;
+- Homeschedasticity: Var($\epsilon_i$) = $\sigma^2$;
+- Normality and Independence of $\epsilon_i$.
+
+#### Linearity
+The plots of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in the data.
+
+#### Homoschedasticity
+The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
+
+```{r}
+reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
+```
+
+```{r}
+se  <- summary(reg.out2)$sigma         # se
+rsq <- summary(reg.out2)$r.squared     # R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(reg.out2)
+par(mfrow=c(1,1))
+```
+
+The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity.
+
+#### Normality and Independence of errors
+We assess normality looking to the QQplot....
+
+
+### Other Possible Problems
+
+#### Outliers
+The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute value are possible outliers.
+
+Note: Why 3? The Studentized Residuals are approximated by a N(0,1). The probability to observe a value greater than 3 is 0.001349898.
+```{r}
+1 - pnorm(3)
+```
+
+```{r}
+plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Studentized Residuals")
+
+abline(h=3, col = "red")
+abline(h=-3, col = "red")
+```
+
+```{r}
+out <- as.numeric(names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)]))
+outdf <- df[!(rownames(df) %in% out),]
+```
+
+```{r}
+reg.out3 <- lm(log(outdf$ViolentCrimesPerPop+1)~., data=outdf)
+```
+
+```{r}
+se  <- summary(reg.out3)$sigma         # se
+rsq <- summary(reg.out3)$r.squared     # R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(reg.out3)
+par(mfrow=c(1,1))
+```
+
+The RSE is 0.65 when the outlier is included in the regression and it is 0.59 when the outlier is removed. Since the RSE is used to compute all conﬁdence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the outliers the $R^2$ increses from 0.67 to 0.7.
+Care should be taken in the decision of taking or dropping outliers.
+
+#### High Leverage Points
+In order to quantify an observation’s leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+
+```{r}
+plot(hatvalues(reg.out2), rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
+
+p <- dim(df)[2]-1
+n <- dim(df)[1]
+abline(v=(p+1)/n, col = "red")
+```
+E ora....???
 
 ### Correlation insight
 
@@ -454,42 +700,6 @@ sv$d
 
 ## State Aggregation - data analysis
 
-```{r}
-# Violent Crimes per 100K Population - State aggregation
-vc_state <- aggregate(crimedata[, "ViolentCrimesPerPop"], list(crimedata$state), mean)
-names(vc_state)[names(vc_state) == "Group.1"] <- "state"
-names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
-```
-
-```{r}
-# Population - State aggregation
-pop_state <- aggregate(crimedata[, "population"], list(crimedata$state), sum)
-names(pop_state)[names(pop_state) == "Group.1"] <- "state"
-names(pop_state)[names(pop_state) == "x"] <- "PopTot"
-```
-
-```{r, include=FALSE}
-# install.packages("usmap")
-library(usmap)
-library(ggplot2)
-```
-
-```{r, fig.height = 3, fig.align = "center"}
-par(mfrow=c(1,1))
-plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "red") + 
-  scale_fill_continuous(low = "white", high= "red", name = "Violent Crimes", label = scales::comma) + 
-  theme(legend.position = "right")
-```
-
-```{r, fig.height = 3, fig.align = "center"}
-par(mfrow=c(1,1))
-plot_usmap(data = pop_state, values = "PopTot", color = "red") + 
-  scale_fill_continuous(low = "white", high= "red", name = "Population", label = scales::comma) + 
-  theme(legend.position = "right")
-```
-Montana, Nebraska and Hawaii are missing
-
-
 Maps plot on mean values per state
 ```{r}
 #plot mean some predictor and all response vars per state
@@ -512,8 +722,6 @@ for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)
   print(pl)
 
 }
-
-
 
 ```
 
