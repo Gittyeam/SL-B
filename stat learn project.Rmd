@@ -17,6 +17,15 @@ library(ggplot2)
 library(usmap)
 # install.packages("varhandle", dependencies = T)
 library(varhandle)
+
+library(pROC)
+
+library(MASS)
+
+library(class)
+
+
+set.seed(1)
 ```
 
 # Aim of the project
@@ -156,6 +165,7 @@ cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
 For the remaining variables with missing values, we substitute NA with the mean computed over the state
+
 ```{r}
 # Substitute a missing value with the average computed over the state
 for(col in nacolnames) {
@@ -174,6 +184,7 @@ sum(is.na(cleandf))
 # Remove all variables from environment excpet the cleaned and the original dataset
 rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 ```
+
 
 # Exploratory Data Analysis - Assessing Assumptions for Linear Models
 ```{r, include=FALSE}
@@ -293,7 +304,71 @@ boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)])
 par(mfrow=c(1,1))
 ```
 
-## Diagnostic Tests - Multiple linear regression: predictor = ViolentCrimesPerPop
+## Altri Plot a caso
+### State Aggregation - data analysis
+
+Maps plot on mean values per state ... vogliamo in caso tenerne qualcuno?
+
+```{r, include=FALSE}
+#plot mean some predictor and all response vars per state
+
+dataf=cleandf
+
+
+
+for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
+  dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
+  names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
+  names(dataaggr)[names(dataaggr) == "x"] <- colnames(dataf)[i]
+  
+  mycol=c("#00AFBB", "#E7B800", "#FC4E07")[i%%3 + 1]
+
+
+  pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
+    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) + 
+    theme(legend.position = "right")
+  
+  print(pl)
+
+}
+
+```
+
+### Pairs plot
+
+
+```{r}
+# pairs plot prova
+pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,data=cleandf)
+```
+
+```{r}
+#scatter plot between all predictor vs ViolentCrimesPerPop (tantii)
+par(mfrow=c(2,2))
+
+#dataf=cleandf
+#seq(3,dim(dataf)[2]-18)
+
+#for(i in seq(3,dim(dataf)[2]-18)) {
+  
+  #scatter.smooth(dataf[,i],dataf$ViolentCrimesPerPop, xlab=colnames(dataf[i]), ylab='ViolentCrimesPerPop')
+
+#}
+
+par(mfrow=c(1,1))
+
+```
+
+
+
+
+# Split in Train and Test/ validation Folds
+da mettere prima dei primi modelli
+```{r}
+train <- sample(1:1996, 1600)
+```
+
+#Multiple linear regression: response = ViolentCrimesPerPop
 
 Remove non predictive variables:
 communityname, state, all crimes except variable ViolentCrimesPerPop
@@ -321,19 +396,37 @@ plot(reg.out)
 par(mfrow=c(1,1))
 ```
 
+```{r}
+#train and test MSE
 
-### Assessing Model Assumptions:
+# linear model with training data
+lm.fit <- lm(df$ViolentCrimesPerPop~., data=df, subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit, newdata=df[train, ])
+MSE <- mean((df$ViolentCrimesPerPop[train]-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit, newdata=df[-train, ])
+MSE <- mean((df$ViolentCrimesPerPop[-train]-y.pred)^2)
+MSE 
+```
+
+
+## Assessing Model Assumptions:
 The model assumptions are:
 
 - Linearity of the response-predictor relationships;
 - Homeschedasticity: Var($\epsilon_i$) = $\sigma^2$;
 - Normality and Independence of $\epsilon_i$.
 
-#### Linearity
+### Linearity
 The plots of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in
-the data.
+the data. (e ci dice che gli errori sono non correlati :))
 
-#### Homoschedasticity
+### Homoschedasticity
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible solution
 is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
@@ -356,13 +449,31 @@ par(mfrow=c(1,1))
 
 The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity.
 
-#### Normality and Independence of errors
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df, subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit2, newdata=df[train, ])
+MSE <- mean((log(df$ViolentCrimesPerPop[train]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit2, newdata=df[-train, ])
+MSE <- mean((log(df$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
+MSE 
+```
+
+### Normality and Independence of errors
 We assess normality looking to the QQplot....
 
 
-### Other Possible Problems
+## Other Possible Problems
 
-#### Outliers
+### Outliers
 The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider
 the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
 by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute
@@ -402,13 +513,31 @@ plot(reg.out3)
 par(mfrow=c(1,1))
 ```
 
+```{r}
+#train and test MSE
+to=sample(1:1978,1590)
+# linear model with training data
+lm.fit3 <- lm(log(outdf$ViolentCrimesPerPop+1)~., data=outdf, subset=to)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit3, newdata=outdf[to, ])
+MSE <- mean((log(outdf$ViolentCrimesPerPop[to]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit3, newdata=outdf[-to, ])
+MSE <- mean((log(outdf$ViolentCrimesPerPop[-to]+1)-y.pred)^2)
+MSE 
+```
+
 The RSE is 0.65 when the outlier is included in the regression and it is 0.59 when the outlier is removed. Since the RSE is used to
-compute all conﬁdence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
+compute all confidence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
 outliers the $R^2$ increses from 0.67 to 0.7.
 Care should be taken in the decision of taking or dropping outliers.
 
-#### High Leverage Points
-In order to quantify an observation’s leverage, we compute the leverage statistic. If a given observation has a leverage statistic that
+### High Leverage Points
+In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that
 greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
 
 ```{r}
@@ -420,15 +549,95 @@ abline(v=(p+1)/n, col = "red")
 ```
 E ora....???
 
-### Correlation insight
+Try removing high leverage points vedi https://online.stat.psu.edu/stat462/node/171/
 
-In the following few lines of code we perform a first manual skimming of stongly dependent variables removing, between the most
+```{r}
+
+whereh<-hatvalues(reg.out2)>3*(p+1)/n
+sum(whereh) # 56 punti
+
+#hatvalues contains the diag of the hat matrix
+
+
+plot(hatvalues(reg.out2)[!whereh], rstandard(reg.out2)[!whereh], xlab="Leverage", ylab = "Studentized Residuals")
+abline(v=(p+1)/n, col = "red")
+
+reg.out4 <- lm(log(df$ViolentCrimesPerPop[!whereh]+1)~., data=df[!whereh,])
+
+plot(reg.out4)
+
+se  <- summary(reg.out4)$sigma         # se
+rsq <- summary(reg.out4)$r.squared     # R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2))
+
+
+#computing H by hand
+
+#X matrix of predictors values
+#X<- data.matrix(df[,1:100])
+#H <- X %*% solve(t(X) %*% X) %*% t(X)
+
+#diag(H) #uguale ad hatvalues yee
+
+```
+
+Con questo cut non sembra esserci molta differenza... ma RSE diminuisce di qualche millesimo.. e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
+a high leverage observation may or may not actually be influential, a data point has large influence only if it affects the estimated regression function.. potrebbe essere una buona notizia :)
+
+Facendo un cut maggiore usando 2*.. l'errore riaumenta
+
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit4 <- lm(log(df$ViolentCrimesPerPop[!whereh]+1)~., data=df[!whereh,], subset=train[-whereh])
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit4, newdata=df[train[-whereh], ])
+MSE <- mean((log(df$ViolentCrimesPerPop[train[-whereh]]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit4, newdata=df[-c(train,whereh), ])
+MSE <- mean((log(df$ViolentCrimesPerPop[-c(train,whereh)]+1)-y.pred)^2)
+MSE 
+```
+
+
+### Collinearity 
+Collinearity refers to the situation in which two or more predictor variables
+collinearity
+are closely related to one another. The presence of collinearity can pose problems in
+the regression context, since it can be difficult to separate out the individual effects of collinear variables on the response.
+
+Since collinearity reduces the accuracy of the estimates of the regression
+coefficients, it causes the standard error for $\hat \beta_j$ to grow. Recall that the
+t-statistic for each predictor is calculated by dividing $\hat \beta_j$ by its standard
+error. Consequently, collinearity results in a decline in the t-statistic. As a
+result, in the presence of collinearity, we may fail to reject $H_0:\ \beta_j = 0$. This
+means that the power of the hypothesis test-the probability of correctly
+power
+detecting a non-zero coefficient-is reduced by collinearity. 
+
+To avoid such a situation, it is desirable to identify and address potential
+collinearity problems while fitting the model.
+A simple way to detect collinearity is to look at the correlation matrix
+of the predictors.
+
+####Correlation insight
+
+In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most
 correlated ones, the more redundant and meaningless.
 
 ```{r}
 # restrict to the predictive numeric attributes
-corrdf <- cleandf[1:102]
-corrdf <- corrdf[sapply(corrdf,is.numeric)] # first two columns removed
+#corrdf <- cleandf[1:102]
+#corrdf <- corrdf[sapply(corrdf,is.numeric)] # first two columns removed
+corrdf <- df[1:100]
+#corrdf e come df senza ultima colonna, magari mettiamo quella cosi' non abbiamo 1000 dframes
+
 #View(corrdf)
 
 # correlation matrix
@@ -493,6 +702,7 @@ cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
 corrplot(cm_ind, title='Final correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 ```
 
+DA TOGLIERE, GIA FATTO SU
 ```{r, eval=FALSE, include=FALSE}
 # eventually useful code
 
@@ -514,7 +724,67 @@ c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore"
 "PctRecentImmig")
 ```
 
-### Standardization / Normalization
+
+
+#### Multicollinearity
+Unfortunately, not all collinearity problems can be
+detected by inspection of the correlation matrix.... VIF? 
+
+```{r}
+
+reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
+
+sum(vif(reg.out2)>10) #siamo nella cacca? 68 colonne da qui... ignoriamo la cosa e andiamo avanti? piu che atro non ho capito bene come funziona questo vif
+
+```
+
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression
+fit, since the presence of collinearity implies that the information that this
+variable provides about the response is redundant in the presence of the
+other variables. The second solution is
+to combine the collinear variables together into a single predictor.
+
+
+
+qui da provare il modello con le colonne tolte dalle analisi sulle collinearity??
+```{r}
+
+reg.out5 <- lm(log(cleandfcorr$ViolentCrimesPerPop+1)~., data=cleandfcorr[-c(1,2, seq(48,65)[-17])
+])
+
+plot(reg.out5)
+
+se  <- summary(reg.out5)$sigma         # se
+rsq <- summary(reg.out5)$r.squared     # R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2))
+
+#summary(reg.out5)
+
+```
+
+RSE aumenta.. ma massimo R^2 fino ad ora
+
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit5 <- lm(log(cleandfcorr$ViolentCrimesPerPop+1)~., data=cleandfcorr[-c(1,2, seq(48,65)[-17])], subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit5, newdata=cleandfcorr[train,-c(1,2, seq(48,65))])
+MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[train]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit5, newdata=cleandfcorr[-train,-c(1,2, seq(48,65))])
+MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
+MSE 
+```
+
+# Other possible transforms of data
+## Standardization / Normalization
 
 ```{r}
 # Standardization using scale
@@ -523,7 +793,7 @@ scaledf[seq(3,dim(scaledf)[2])] <- scale(cleandf[seq(3,dim(cleandf)[2])] )
 ```
 
 ```{r}
-# Standardization using an home made function (⌐■_■)
+# Standardization using an home made function 
 standardization <- function(x) {
 return ((x - mean(x)) / sd(x))
 }
@@ -533,7 +803,7 @@ standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardi
 ```
 
 ```{r}
-# Normalization using an home made function (⌐■_■)
+# Normalization using an home made function 
 normalization <- function(x) {
 return ((x - min(x)) / (max(x) - min(x)))
 }
@@ -549,8 +819,8 @@ scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
 # se vogliamo la solita conviene scriverla a mano
 ```
 
-### Outliers
-
+## Outliers
+DA TOGLIERE, GIA FATTO SU?
 ```{r}
 # Remove row if one of its value is
 # 3 times greater than the upper interquartile bound or
@@ -609,8 +879,11 @@ normnewdfcorr[seq(3,dim(normnewdfcorr)[2])] <- lapply(newdfcorr[seq(3,dim(newdfc
 
 ```{r}
 # Remove all variables from environment excpet ...
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf","cleandfcorr","newdfcorr","normnewdfcorr")))
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf","cleandfcorr","newdfcorr","normnewdfcorr","df", "train")))
 ```
+
+
+# Variables selection
 
 ## Principal Component Analysis
 
@@ -671,6 +944,77 @@ fviz_pca_var(pccorr,
 ```
 
 
+PC regression
+```{r}
+
+#use corresponding pc 
+pc0 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
+summary(pc0)
+
+#use only first 15 comp
+pc01 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
+summary(pc01)
+
+#use corresponding pc 
+pc1 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
+summary(pc1)
+
+#use only first 10 comp
+pc11 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
+summary(pc11)
+
+#use only comp with '***' significativity
+pc12 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+summary(pc12)
+
+plot(pc12)
+
+scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
+```
+
+no log transf
+
+```{r}
+#train and test MSE
+tp<-sample(1:1280,1000)
+pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
+
+# linear model with training data
+lm.fitPC <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=pcdf, subset=tp)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
+MSE <- mean((normnewdfcorr$ViolentCrimesPerPop[tp]-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
+MSE <- mean((normnewdfcorr$ViolentCrimesPerPop[-tp]-y.pred)^2)
+MSE 
+```
+
+con trasf
+```{r}
+#train and test MSE
+tp<-sample(1:1280,1000)
+pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
+
+# linear model with training data
+lm.fitPC <- lm(log(normnewdfcorr$ViolentCrimesPerPop+1)~., data=pcdf, subset=tp)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
+MSE <- mean((log(normnewdfcorr$ViolentCrimesPerPop[tp]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
+MSE <- mean((log(normnewdfcorr$ViolentCrimesPerPop[-tp]+1)-y.pred)^2)
+MSE 
+```
+
 ## Singular Value Decomposition
 
 An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$
@@ -715,113 +1059,22 @@ sv$d
 #???
 ```
 
+## Backward - Forward elimination
 
-## State Aggregation - data analysis
+or other greedy search
 
-Maps plot on mean values per state
-```{r}
-#plot mean some predictor and all response vars per state
+aic Bic, Cp, adj R2...check also the p val, confounding..
+vedi slides 454 - 484 rovers
 
-#data=cleandf
-dataf=newdfcorr
+## Cross Valitation
 
+# Other possible predictive Models
 
-for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
-  dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
-  names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
-  names(dataaggr)[names(dataaggr) == "x"] <- colnames(dataf)[i]
-  
-  mycol=c("#00AFBB", "#E7B800", "#FC4E07")[i%%3 + 1]
+## Polynomial Regression
 
-
-  pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
-    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) + 
-    theme(legend.position = "right")
-  
-  print(pl)
-
-}
-
-```
-
-## Pairs plot
-
-```{r}
-# pairs plot prova
-pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,data=cleandf)
-```
-
-```{r}
-#scatter plot between all predictor vs ViolentCrimesPerPop (tantii)
-par(mfrow=c(2,2))
-
-#data=cleandf
-dataf=normnewdfcorr
-
-#seq(3,dim(dataf)[2]-18)
-
-#for(i in seq(3,dim(dataf)[2]-18)) {
-  
-  #scatter.smooth(dataf[,i],dataf$ViolentCrimesPerPop, xlab=colnames(dataf[i]), ylab='ViolentCrimesPerPop')
-
-#}
-
-par(mfrow=c(1,1))
-
-```
-
-
-```{r}
-boxplot(dataf$PctPopUnderPov~dataf$state, cex.names=0.1,las=2,col=c("#00AFBB", "#E7B800", "#FC4E07"))
-``` 
-
-```{r}
-#non hanno senso :(
-#hist(dataf$PctPopUnderPov)
-``` 
-## Models
-
-### Split in Train and Test/ validation Folds
-
-### Linear regression
-```{r}
-#use normalized-outliers 'free' data
-m0<-lm( normnewdf$ViolentCrimesPerPop~. , data=normnewdf[,3:98])
-summary(m0)
-
-#use corresponding pc 
-pc0 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
-summary(pc0)
-
-#use only first 15 comp
-pc01 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
-summary(pc01)
-
-#use normalized-outliers and high correlated 'free' data
-m1<-lm( normnewdfcorr$ViolentCrimesPerPop~. , data=normnewdfcorr[,3:80])
-summary(m1)
-
-#use corresponding pc 
-pc1 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
-summary(pc1)
-
-#use only first 10 comp
-pc11 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
-summary(pc11)
-
-#use only comp with '***' significativity
-pc12 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
-summary(pc12)
-
-plot(pc12)
-
-
-
-scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
-```
-
-### Polynomial Regression
-```{r}
+non ci serve, linearity assump soddisfatta
+DA TOGLIERE, GIA FATTO SU
+```{r, eval=FALSE, include=FALSE}
 # fit using a second order polynomial in all var
 
 polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~",
@@ -849,27 +1102,215 @@ plot(m3)
 #usare solo se si hanno poche var in considerazione! dai risultati sembra che gli ordini superiori al primo non siano molto influenti...
 ```
 
-### Multivariate Linear Regression
+## Multivariate Linear Regression
+
+questo potrebbe essere interessante per predirre anche le altre colonne crimes.. come si valuta?
 ```{r}
 #predict all the crime features... 
-m3 <- lm(data.matrix(normnewdfcorr[,81:98]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+mm <- lm(data.matrix(normnewdfcorr[,48:65]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
 
 #summary(m3) #long output
 
 ```
 
-### LDA e QDA?
-
-### Bayesian regression?
+## Bayesian regression?
 Issue... non abbiamo possibili valori ipotesi iniziali ...
 
-### Binary classification models and KNN
+## Binary classification models 
 pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... ha senso? 
 
-### Comparing results
+
+http://www.disastercenter.com/crime/uscrime.htm
+
+```{r}
+avgviol<- 731
+
+sum(df$ViolentCrimesPerPop>avgviol)
+ViolentCrimesFactor <- rep("Low", 1996)
+ViolentCrimesFactor[df$ViolentCrimesPerPop>avgviol] <- "High"
+df["ViolentCrimesFactor"]<-as.factor(ViolentCrimesFactor)
+
+is.factor(cleandfcorr$ViolentCrimesFactor)
+
+cleandfcorr["ViolentCrimesFactor"]<-as.factor(ViolentCrimesFactor)
+
+```
+
+### Logistic regression
+```{r}
+lreg.out<-glm(df$ViolentCrimesFactor ~ ., family = binomial, data=df[,-101])
+summary(lreg.out)
+
+
+# check the coding of ViolentCrimesFactor
+contrasts(df$ViolentCrimesFactor)
+
+logistic.prob <- predict(lreg.out, type="response") # want probability
+
+# ROC curve 
+
+# levels = controls (0's) as first element and  cases (1's) as second
+roc.out <- roc(df$ViolentCrimesFactor, logistic.prob, levels=c("Low", "High"))
+
+auc(roc.out)
+
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+# threshold that maximises the sum of sensitivity and specificity
+coords(roc.out, "best")
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.75] <- "Low"
+
+table(logistic.pred, df$ViolentCrimesFactor)
+
+#train error
+(226+63)/1996
+
+```
+
+```{r}
+lreg.out1<-glm(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+summary(lreg.out)
+
+logistic.prob <- predict(lreg.out1, type="response") # want probability
+
+# ROC curve 
+
+# levels = controls (0's) as first element and  cases (1's) as second
+roc.out <- roc(cleandfcorr$ViolentCrimesFactor, logistic.prob, levels=c("Low", "High"))
+
+auc(roc.out)
+
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+# threshold that maximises the sum of sensitivity and specificity
+coords(roc.out, "best")
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.71] <- "Low"
+
+table(logistic.pred, cleandfcorr$ViolentCrimesFactor)
+
+#train error
+(224+86)/1996
+
+#train acc
+mean(logistic.pred==cleandfcorr$ViolentCrimesFactor)
+
+```
+
+```{r}
+#using train and test
+lreg.out1<-glm(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset = train)
+
+logistic.prob <- predict(lreg.out1, type="response") # want probability
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.71] <- "Low"
+table(logistic.pred, cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(logistic.pred[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(logistic.pred[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+```
+risultati strani splittando
+
+### LDA e QDA
+servono delle assuzioni maggiori sui dati.. da controllare, discuterne
+```{r}
+lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+lda.fit
+
+lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
+lda.class <- lda.pred$class
+table(lda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(lda.class==cleandfcorr$ViolentCrimesFactor)
+
+#train err
+(87+183)/1996
+
+qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+qda.fit
+qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
+table(qda.class,cleandfcorr$ViolentCrimesFactor)
+#train err
+(118+189)/1996
+#train acc
+mean(qda.class==cleandfcorr$ViolentCrimesFactor)
+```
+
+
+```{r}
+#using train and test
+lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset=train)
+#lda.fit
+
+lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
+lda.class <- lda.pred$class
+table(lda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(lda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(lda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+
+qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47],subset=train)
+#qda.fit
+qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
+table(qda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(qda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(qda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+```
+
+
+### KNN
+```{r}
+
+train.X <- data.matrix(cleandfcorr[,3:47])
+
+knn.pred <- knn(train.X, train.X, cleandfcorr$ViolentCrimesFactor, k=3)
+table(knn.pred,cleandfcorr$ViolentCrimesFactor)
+(161+97)/1996
+
+mean(knn.pred==cleandfcorr$ViolentCrimesFactor)
+```
+va meglio.. 
+
+```{r}
+#train and test
+train.X <- data.matrix(cleandfcorr[train,3:47])
+test.X <- data.matrix(cleandfcorr[-train,3:47])
+
+# train error
+knn.pred <- knn(train.X, train.X, cleandfcorr$ViolentCrimesFactor[train], k=5)
+table(knn.pred,cleandfcorr$ViolentCrimesFactor[train])
+mean(knn.pred==cleandfcorr$ViolentCrimesFactor[train])
+
+# test error
+knn.pred <- knn(train.X, test.X, cleandfcorr$ViolentCrimesFactor[train], k=5)
+table(knn.pred,cleandfcorr$ViolentCrimesFactor[-train])
+mean(knn.pred==cleandfcorr$ViolentCrimesFactor[-train])
+```
+
+## Regularized models
+
+
+# Conclusions - Comparing results
 Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
-## eventually useful stuff
+#References
+
+- An Introduction to Statistical Learning
+- https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
+
+#eventually useful stuff
 
 * raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
 * numbUrban or pctUrban keep only one (maybe the second, so that we can eventually discard population)
@@ -887,3 +1328,4 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 at what rate?)
   same for PctBornSameState & PctSame(...)
 * PctRec(...): same but over the full population
+
