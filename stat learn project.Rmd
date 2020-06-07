@@ -76,7 +76,7 @@ More than 10% of values is missing.
 
 ```{r}
 # install.packages("varhandle", dependencies = T)
-library(varhandle)
+# library(varhandle)
 nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 
 # nadf dataframe with columns that present NA 
@@ -108,8 +108,8 @@ names(zerodf)
 ```
 Suspecious zeros: numbUrban, pctUrban.
 
-The columns with more than 50% NA are dropped and also variables fold (no useful), OwnOccQrange, RentQrange (obtained as the difference
-of other columns). We decide to keep the other columns with zero values.
+The columns with more than 50% NA are dropped and so were the variables fold (not useful), OwnOccQrange and RentQrange (obtained as the difference
+of other columns). We decided to keep the other columns with zero values due to their meaningfulness.
 ```{r}
 # Find columns with > 50% NA
 coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
@@ -315,7 +315,6 @@ Maps plot on mean values per state ... vogliamo in caso tenerne qualcuno?
 dataf=cleandf
 
 
-
 for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
   dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
   names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
@@ -331,7 +330,6 @@ for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)
   print(pl)
 
 }
-
 ```
 
 ### Pairs plot
@@ -373,7 +371,7 @@ train <- sample(1:1996, 1600)
 Remove non predictive variables:
 communityname, state, all crimes except variable ViolentCrimesPerPop
 ```{r}
-coltodrop <- c(1,2, seq(103,120)[-17])
+coltodrop <- c(1,2, seq(103,120)[-17]) # -17 keeps ViolentCrimesPerPop
 
 df <- cleandf[,-coltodrop]
 ```
