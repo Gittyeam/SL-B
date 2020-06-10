@@ -1,0 +1,89 @@
+---
+title: "CodiceAvanzato"
+author: "Gitteam"
+date: "9/6/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Non mi picchiate, se si usa la media come centro scale è equivalente a questa... Alla fine ho imparato a leggere (rdocumentation.org): *the root-mean-square for a (possibly centered) column is defined as $\sqrt\Sigma(X^2)/(n-1)$, where $x$ is a vector of the non-missing values and $n$ is the number of non-missing values. In the case `center = TRUE`, this is the same as the standard deviation, but in general it is not (to scale by the standard deviations without centering, use `scale(x, center = FALSE, scale = apply(x, 2, sd, na.rm = TRUE))`.*
+
+```{r}
+# Standardization using an home made function 
+standardization <- function(x) {
+return ((x - mean(x)) / sd(x))
+}
+
+standf <- cleandf
+standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
+```
+
+```{r}
+# Normalization using an home made function 
+normalization <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)))
+}
+
+normdf <- cleandf
+normdf[seq(3,dim(normdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], normalization)
+```
+
+```{r, eval=FALSE, include=FALSE}
+scaleddf <- data.frame(cleandf2)
+scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
+# scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
+# leggi tre celle sopra, perdono
+```
+
+```{r}
+# Normalization of the dataset without drastic outliers
+normnewdf <- newdf
+normnewdf[seq(3,dim(normnewdf)[2])] <- lapply(newdf[seq(3,dim(newdf)[2])], normalization)
+
+
+normnewdfcorr <- newdfcorr
+normnewdfcorr[seq(3,dim(normnewdfcorr)[2])] <- lapply(newdfcorr[seq(3,dim(newdfcorr)[2])], normalization)
+```
+
+```{r}
+# Remove all variables from environment excpet ...
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf","cleandfcorr","newdfcorr","normnewdfcorr","df", "train")))
+```
+
+```{r, eval=FALSE, include=FALSE}
+C <- cov(SVDdf)
+
+# plot the original singular values (our actual diagonal is squared)
+#barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
+barplot(sv$d)
+
+sv$d
+#sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
+
+#???
+```
+
+
+
+# Utili da tenere come esempi a voce nel caso chiedesse di più sulla features selection
+
+* raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
+* numbUrban or pctUrban keep only one (maybe the second, so that we can eventually discard population)
+  same for  NumUnderPov & PctPopUnderPov
+            NumKidsBornNeverMar & PctKidsBornNeverMar (total missing)
+            HousVacant & PctHousOccup & PctHousOwnOccup
+            OwnOccLowQuart & OwnOccMedVal & OwnOccHiQuart & OwnOccQrange
+            RentQrange (difference between 2 prev cols)
+            Lemas(...) ALREADY REMOVED in cleandf
+            PopDens (again, delete pop or similar)
+            
+            ?Target? & ?Target?PerPoP
+* medIncome and medfamincome so similar
+* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): 
+at what rate?)
+  same for PctBornSameState & PctSame(...)
+* PctRec(...): same but over the full population
