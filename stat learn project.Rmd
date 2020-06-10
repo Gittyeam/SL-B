@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 ```
 
 ```{r include=FALSE}
@@ -178,6 +178,7 @@ for(col in nacolnames) {
 Now cleandf doeas not contain NA
 ```{r}
 sum(is.na(cleandf))
+dim(cleandf)
 ```
 
 ```{r}
@@ -201,12 +202,25 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
 vc_state <- aggregate(cleandf[, "ViolentCrimesPerPop"], list(cleandf$state), mean)
 names(vc_state)[names(vc_state) == "Group.1"] <- "state"
 names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
+# aggiunte
+vc_state['logViolentCrimesMean'] <- log(vc_state['ViolentCrimesMean']+1)
+vc_state['sqrtViolentCrimesMean'] <- sqrt(vc_state['ViolentCrimesMean'])
 ```
 
 ```{r, fig.height = 3, fig.align = "center"}
 par(mfrow=c(1,1))
 plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
   scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "Violent Crimes",label=scales::comma) +
+  theme(legend.position = "right")
+
+# prova con il log
+plot_usmap(data = vc_state, values = "logViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "log(Violent Crimes +1)",label=scales::comma) +
+  theme(legend.position = "right")
+
+# con log fa schifo, con la radice è già meglio...
+plot_usmap(data = vc_state, values = "sqrtViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "sqrt(Violent Crimes)",label=scales::comma) +
   theme(legend.position = "right")
 ```
 
@@ -222,6 +236,11 @@ lines(density(cleandf$ViolentCrimesPerPop))
 hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
 lines(density(log(cleandf$ViolentCrimesPerPop +1)))
 par(mfrow=c(1,1))
+
+# aggiunto, da tenere? Solo se teniamo il grafico secondo me
+hist(sqrt(cleandf$ViolentCrimesPerPop), prob=TRUE, breaks=30, col=Col[1], main="sqrt(Violent Crimes)")
+lines(density(sqrt(cleandf$ViolentCrimesPerPop)))
+par(mfrow=c(1,1))
 ```
 
 ```{r}
@@ -231,6 +250,11 @@ qqline(cleandf$ViolentCrimesPerPop)
 
 qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
 qqline(log(cleandf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+
+# aggiunto, da tenere? Questo direi di no
+qqnorm(sqrt(cleandf$ViolentCrimesPerPop), main="log(Violent Crimes +1)")
+qqline(sqrt(cleandf$ViolentCrimesPerPop))
 par(mfrow=c(1,1))
 ```
 
@@ -360,13 +384,13 @@ par(mfrow=c(1,1))
 
 
 
-# Split in Train and Test/ validation Folds
+# Split in Train and Test / validation Folds
 da mettere prima dei primi modelli
 ```{r}
-train <- sample(1:1996, 1600)
+train <- sample(rownames(cleandf), 1600)
 ```
 
-#Multiple linear regression: response = ViolentCrimesPerPop
+# Multiple linear regression: response = ViolentCrimesPerPop
 
 Remove non predictive variables:
 communityname, state, all crimes except variable ViolentCrimesPerPop
@@ -395,7 +419,7 @@ par(mfrow=c(1,1))
 ```
 
 ```{r}
-#train and test MSE
+# train and test MSE
 
 # linear model with training data
 lm.fit <- lm(df$ViolentCrimesPerPop~., data=df, subset=train)
@@ -404,7 +428,7 @@ lm.fit <- lm(df$ViolentCrimesPerPop~., data=df, subset=train)
 # mean squared error on train
 y.pred <- predict(lm.fit, newdata=df[train, ])
 MSE <- mean((df$ViolentCrimesPerPop[train]-y.pred)^2)
-MSE 
+MSE
 
 # mean squared error on test
 y.pred <- predict(lm.fit, newdata=df[-train, ])
@@ -937,8 +961,6 @@ fviz_pca_var(pccorr,
              repel = T,     # Avoid text overlapping
              select.var = list(contrib = 15)
              )
-
-
 ```
 
 
