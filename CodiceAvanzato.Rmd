@@ -68,6 +68,47 @@ sv$d
 ```
 
 
+```{r}
+outdf <- cleandf
+outdf[seq(3,dim(outdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], is.out.sd)
+
+odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
+rowtodrop <- odf$row_name
+
+newdf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
+
+
+outdf <- cleandfcorr
+outdf[seq(3,dim(outdf)[2])] <- lapply(cleandfcorr[seq(3,dim(cleandfcorr)[2])], is.out.sd)
+
+odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
+rowtodrop <- odf$row_name
+
+newdfcorr <- cleandfcorr[!(rownames(cleandfcorr) %in% rowtodrop),]
+```
+
+```{r, eval=FALSE, include=FALSE}
+# eventually useful code
+
+# altri comandi per trovare highly correlated... (aiuto non volevo mettermi alla tv :3)
+rs <- cor(corrdf, use="complete.obs")
+diag(rs) <- NA
+
+# rimuove tutte le colonne che abbiano almeno una correlazione, perdiamo informazioni :/
+col_has_over_90 <- apply(rs, 2, function(x) any(x > .9, na.rm = TRUE))
+
+colnames(rs[, col_has_over_90])
+# vs
+colnames(corrdf)[rem9]
+
+# selezionate a mano e interpretando significato
+coltodropcorr <-
+c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters",
+"MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent",
+"PctRecentImmig")
+```
+
+
 
 # Utili da tenere come esempi a voce nel caso chiedesse di più sulla features selection
 

@@ -147,6 +147,7 @@ We decide to proceed as in point 2.
 meandf <- aggregate(cleandf[,nacolnames], list(cleandf$state), function(x) mean(x, na.rm = TRUE))
 sum(is.na(meandf))
 ```
+
 The dataframe with the mean contains NaN values, this means that there are States for which the value of a certain feature is zero for
 all communities that belong to them.
 This happens for IL, MI (no data of rapes, rapesPerPop, ViolentCrimesPerPop), KS, VT (no data of arsons, arsonsPerPop, nonViolPerPop).
@@ -165,7 +166,6 @@ cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
 For the remaining variables with missing values, we substitute NA with the mean computed over the state
-
 ```{r}
 # Substitute a missing value with the average computed over the state
 for(col in nacolnames) {
@@ -724,29 +724,6 @@ cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
 corrplot(cm_ind, title='Final correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 ```
 
-DA TOGLIERE, GIA FATTO SU
-```{r, eval=FALSE, include=FALSE}
-# eventually useful code
-
-# altri comandi per trovare highly correlated... (aiuto non volevo mettermi alla tv :3)
-rs <- cor(corrdf, use="complete.obs")
-diag(rs) <- NA
-
-# rimuove tutte le colonne che abbiano almeno una correlazione, perdiamo informazioni :/
-col_has_over_90 <- apply(rs, 2, function(x) any(x > .9, na.rm = TRUE))
-
-colnames(rs[, col_has_over_90])
-# vs
-colnames(corrdf)[rem9]
-
-# selezionate a mano e interpretando significato
-coltodropcorr <-
-c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore","MalePctDivorce","FemalePctDiv","NumInShelters",
-"MedRent","PctPersOwnOccup","PctHousOwnOcc","PctKids2Par","PctYoungKids2Par","PctImmigRec8","PctRecImmig8","PctImmigRecent",
-"PctRecentImmig")
-```
-
-
 
 #### Multicollinearity
 Unfortunately, not all collinearity problems can be
@@ -806,7 +783,7 @@ MSE
 ```
 
 # Other possible transforms of data
-## Standardization / Normalization
+## Standardization
 
 ```{r}
 # Standardization using scale
@@ -814,35 +791,7 @@ scaledf <- cleandf
 scaledf[seq(3,dim(scaledf)[2])] <- scale(cleandf[seq(3,dim(cleandf)[2])] )
 ```
 
-```{r}
-# Standardization using an home made function 
-standardization <- function(x) {
-return ((x - mean(x)) / sd(x))
-}
-
-standf <- cleandf
-standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
-```
-
-```{r}
-# Normalization using an home made function 
-normalization <- function(x) {
-return ((x - min(x)) / (max(x) - min(x)))
-}
-
-normdf <- cleandf
-normdf[seq(3,dim(normdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], normalization)
-```
-
-```{r, eval=FALSE, include=FALSE}
-scaleddf <- data.frame(cleandf2)
-scaleddf['population'] <- scale(cleandf['population'], center = rep(1/2))
-# scale fa questo (con center=F): col/sqrt(sum(col^2)/(length(col)-1))
-# se vogliamo la solita conviene scriverla a mano
-```
-
 ## Outliers
-DA TOGLIERE, GIA FATTO SU?
 ```{r}
 # Remove row if one of its value is
 # 3 times greater than the upper interquartile bound or
@@ -865,43 +814,18 @@ is.out.sd <- function(x){
   return(out)
 }
 
-outdf <- cleandf
-outdf[seq(3,dim(outdf)[2])] <- lapply(cleandf[seq(3,dim(cleandf)[2])], is.out.sd)
+temp <- standf
+temp[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], is.out.IQR)
 
-odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
-rowtodrop <- odf$row_name
+temp <- inspect.na(temp, hist=FALSE, byrow=TRUE, barplot=FALSE, na.value=TRUE)
+rowtodrop_s <- temp$row_name
 
-newdf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
-
-
-outdf <- cleandfcorr
-outdf[seq(3,dim(outdf)[2])] <- lapply(cleandfcorr[seq(3,dim(cleandfcorr)[2])], is.out.sd)
-
-odf <- inspect.na(outdf, hist = FALSE, byrow=TRUE, barplot = FALSE, na.value = TRUE)
-rowtodrop <- odf$row_name
-
-newdfcorr <- cleandfcorr[!(rownames(cleandfcorr) %in% rowtodrop),]
-
-```
-
-```{r}
-# Normalization of the dataset without drastic outliers
-
-normalization <- function(x) {
-return ((x - min(x)) / (max(x) - min(x)))
-}
-
-normnewdf <- newdf
-normnewdf[seq(3,dim(normnewdf)[2])] <- lapply(newdf[seq(3,dim(newdf)[2])], normalization)
-
-
-normnewdfcorr <- newdfcorr
-normnewdfcorr[seq(3,dim(normnewdfcorr)[2])] <- lapply(newdfcorr[seq(3,dim(newdfcorr)[2])], normalization)
+standf_nO <- standf[!(rownames(standf) %in% rowtodrop_s),]
 ```
 
 ```{r}
 # Remove all variables from environment excpet ...
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "newdf", "normnewdf","cleandfcorr","newdfcorr","normnewdfcorr","df", "train")))
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "df", "train")))
 ```
 
 
@@ -910,8 +834,8 @@ rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "standf", "normdf", "
 ## Principal Component Analysis
 
 ```{r}
-# choose the version of the df you prefer (cleandf, normnewdf, scalednewdf ???)
-PCAdf <- normnewdf[,3:(dim(normnewdf)[2]-18)]
+# choose the version of the df you prefer (cleandf, scaledf)
+PCAdf <- standf[,3:(dim(standf)[2]-18)]
 
 # PCA computation
 pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
@@ -938,7 +862,7 @@ fviz_pca_var(pc,
 
 
 
-PCAdfcorr <- normnewdfcorr[,3:(dim(normnewdfcorr)[2]-18)]
+PCAdfcorr <- standfcorr[,3:(dim(standfcorr)[2]-18)]
 
 # PCA computation
 pccorr <- princomp(PCAdfcorr, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
@@ -968,28 +892,28 @@ PC regression
 ```{r}
 
 #use corresponding pc 
-pc0 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
+pc0 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
 summary(pc0)
 
 #use only first 15 comp
-pc01 <- lm(normnewdf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
+pc01 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
 summary(pc01)
 
 #use corresponding pc 
-pc1 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
+pc1 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
 summary(pc1)
 
 #use only first 10 comp
-pc11 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
+pc11 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
 summary(pc11)
 
 #use only comp with '***' significativity
-pc12 <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+pc12 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
 summary(pc12)
 
 plot(pc12)
 
-scatter.smooth(pccorr$scores[,8],normnewdfcorr$ViolentCrimesPerPop)
+scatter.smooth(pccorr$scores[,8],standfcorr$ViolentCrimesPerPop)
 ```
 
 no log transf
@@ -1000,17 +924,17 @@ tp<-sample(1:1280,1000)
 pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
 
 # linear model with training data
-lm.fitPC <- lm(normnewdfcorr$ViolentCrimesPerPop~., data=pcdf, subset=tp)
+lm.fitPC <- lm(standfcorr$ViolentCrimesPerPop~., data=pcdf, subset=tp)
 
 
 # mean squared error on train
 y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
-MSE <- mean((normnewdfcorr$ViolentCrimesPerPop[tp]-y.pred)^2)
+MSE <- mean((standfcorr$ViolentCrimesPerPop[tp]-y.pred)^2)
 MSE 
 
 # mean squared error on test
 y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
-MSE <- mean((normnewdfcorr$ViolentCrimesPerPop[-tp]-y.pred)^2)
+MSE <- mean((standfcorr$ViolentCrimesPerPop[-tp]-y.pred)^2)
 MSE 
 ```
 
@@ -1021,17 +945,17 @@ tp<-sample(1:1280,1000)
 pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
 
 # linear model with training data
-lm.fitPC <- lm(log(normnewdfcorr$ViolentCrimesPerPop+1)~., data=pcdf, subset=tp)
+lm.fitPC <- lm(log(standfcorr$ViolentCrimesPerPop+1)~., data=pcdf, subset=tp)
 
 
 # mean squared error on train
 y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
-MSE <- mean((log(normnewdfcorr$ViolentCrimesPerPop[tp]+1)-y.pred)^2)
+MSE <- mean((log(standfcorr$ViolentCrimesPerPop[tp]+1)-y.pred)^2)
 MSE 
 
 # mean squared error on test
 y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
-MSE <- mean((log(normnewdfcorr$ViolentCrimesPerPop[-tp]+1)-y.pred)^2)
+MSE <- mean((log(standfcorr$ViolentCrimesPerPop[-tp]+1)-y.pred)^2)
 MSE 
 ```
 
@@ -1045,8 +969,8 @@ containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our d
 of information of $X$.
 
 ```{r}
-# choose the version of the df you prefer (scaledf, normdf)
-SVDdf <- normnewdf[,3:102]
+# scaledf SVD
+SVDdf <- scaledf[,3:102]
 
 # SVD on the correlation matrix
 sv <- svd(SVDdf)
@@ -1097,7 +1021,7 @@ DA TOGLIERE, GIA FATTO SU
 ```{r, eval=FALSE, include=FALSE}
 # fit using a second order polynomial in all var
 
-polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~",
+polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
 paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
 
 m2 <- lm(polyformula, data=as.data.frame(pccorr$scores))
@@ -1109,7 +1033,7 @@ plot(m2)
 
 # fit using a 3 order polynomial in all var
 
-polyformula <- eval(paste("normnewdfcorr$ViolentCrimesPerPop ~",
+polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
 paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
 
 m3 <- lm(polyformula, data=as.data.frame(pccorr$scores))
@@ -1127,7 +1051,7 @@ plot(m3)
 questo potrebbe essere interessante per predirre anche le altre colonne crimes.. come si valuta?
 ```{r}
 #predict all the crime features... 
-mm <- lm(data.matrix(normnewdfcorr[,48:65]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+mm <- lm(data.matrix(standfcorr[,48:65]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
 
 #summary(m3) #long output
 
