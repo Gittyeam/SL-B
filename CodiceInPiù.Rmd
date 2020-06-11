@@ -108,6 +108,451 @@ c("agePct16t24","numbUrban","medFamInc","perCapInc","PctNotHSGrad","PctBSorMore"
 "PctRecentImmig")
 ```
 
+# Split in Train and Test / validation Folds
+da mettere prima dei primi modelli
+```{r}
+train <- sample(rownames(cleandf), 1600)
+```
+
+```{r}
+# train and test MSE
+
+# linear model with training data
+lm.fit <- lm(df$ViolentCrimesPerPop~., data=df, subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit, newdata=df[train, ])
+MSE <- mean((df$ViolentCrimesPerPop[train]-y.pred)^2)
+MSE
+
+# mean squared error on test
+y.pred <- predict(lm.fit, newdata=df[-train, ])
+MSE <- mean((df$ViolentCrimesPerPop[-train]-y.pred)^2)
+MSE 
+```
+
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df, subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit2, newdata=df[train, ])
+MSE <- mean((log(df$ViolentCrimesPerPop[train]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit2, newdata=df[-train, ])
+MSE <- mean((log(df$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
+MSE 
+```
+
+
+```{r}
+#train and test MSE
+to=sample(1:1978,1590)
+# linear model with training data
+lm.fit3 <- lm(log(outdf$ViolentCrimesPerPop+1)~., data=outdf, subset=to)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit3, newdata=outdf[to, ])
+MSE <- mean((log(outdf$ViolentCrimesPerPop[to]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit3, newdata=outdf[-to, ])
+MSE <- mean((log(outdf$ViolentCrimesPerPop[-to]+1)-y.pred)^2)
+MSE 
+```
+
+
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit4 <- lm(log(df$ViolentCrimesPerPop[!whereh]+1)~., data=df[!whereh,], subset=train[-whereh])
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit4, newdata=df[train[-whereh], ])
+MSE <- mean((log(df$ViolentCrimesPerPop[train[-whereh]]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit4, newdata=df[-c(train,whereh), ])
+MSE <- mean((log(df$ViolentCrimesPerPop[-c(train,whereh)]+1)-y.pred)^2)
+MSE 
+```
+
+#### Multicollinearity
+Unfortunately, not all collinearity problems can be
+detected by inspection of the correlation matrix.... VIF? 
+
+```{r}
+
+reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
+
+sum(vif(reg.out2)>10) #siamo nella cacca? 68 colonne da qui... ignoriamo la cosa e andiamo avanti? piu che atro non ho capito bene come funziona questo vif
+
+```
+
+
+# Other possible transforms of data
+## Standardization
+
+```{r}
+# Standardization using scale
+scaledf <- cleandf
+scaledf[seq(3,dim(scaledf)[2])] <- scale(cleandf[seq(3,dim(cleandf)[2])] )
+```
+
+## Outliers
+```{r}
+# Remove row if one of its value is
+# 3 times greater than the upper interquartile bound or
+# 3 times lower than the lower interquartile bound
+
+is.out.IQR <- function(x){
+  Q <- quantile(x, probs=c(.25, .75))
+  iqr <- IQR(x)
+  up <-  Q[2]+3*iqr # Upper bound  
+  low <- Q[1]-3*iqr # Lower bound
+  out <- (x < low | x > up)
+  return(out)
+}
+
+is.out.sd <- function(x){
+  sd <- sd(x)
+  up <-  mean(x)+3*sd # Upper bound  
+  low <- mean(x)-3*sd # Lower bound
+  out <- (x < low | x > up)
+  return(out)
+}
+
+temp <- standf
+temp[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], is.out.IQR)
+
+temp <- inspect.na(temp, hist=FALSE, byrow=TRUE, barplot=FALSE, na.value=TRUE)
+rowtodrop_s <- temp$row_name
+
+standf_nO <- standf[!(rownames(standf) %in% rowtodrop_s),]
+```
+
+```{r}
+# Remove all variables from environment excpet ...
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "df", "train")))
+```
+
+```{r}
+#train and test MSE
+
+# linear model with training data
+lm.fit5 <- lm(log(cleandfcorr$ViolentCrimesPerPop+1)~., data=cleandfcorr[-c(1,2, seq(48,65)[-17])], subset=train)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fit5, newdata=cleandfcorr[train,-c(1,2, seq(48,65))])
+MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[train]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fit5, newdata=cleandfcorr[-train,-c(1,2, seq(48,65))])
+MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
+MSE 
+```
+
+```{r}
+#computing H by hand
+
+#X matrix of predictors values
+#X<- data.matrix(df[,1:100])
+#H <- X %*% solve(t(X) %*% X) %*% t(X)
+
+#diag(H) #uguale ad hatvalues yee
+```
+
+no log transf
+
+```{r}
+#train and test MSE
+tp<-sample(1:1280,1000)
+pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
+
+# linear model with training data
+lm.fitPC <- lm(standfcorr$ViolentCrimesPerPop~., data=pcdf, subset=tp)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
+MSE <- mean((standfcorr$ViolentCrimesPerPop[tp]-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
+MSE <- mean((standfcorr$ViolentCrimesPerPop[-tp]-y.pred)^2)
+MSE 
+```
+
+con trasf
+```{r}
+#train and test MSE
+tp<-sample(1:1280,1000)
+pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
+
+# linear model with training data
+lm.fitPC <- lm(log(standfcorr$ViolentCrimesPerPop+1)~., data=pcdf, subset=tp)
+
+
+# mean squared error on train
+y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
+MSE <- mean((log(standfcorr$ViolentCrimesPerPop[tp]+1)-y.pred)^2)
+MSE 
+
+# mean squared error on test
+y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
+MSE <- mean((log(standfcorr$ViolentCrimesPerPop[-tp]+1)-y.pred)^2)
+MSE 
+```
+PC regression
+```{r}
+
+#use corresponding pc 
+pc0 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
+summary(pc0)
+
+#use only first 15 comp
+pc01 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
+summary(pc01)
+
+#use corresponding pc 
+pc1 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
+summary(pc1)
+
+#use only first 10 comp
+pc11 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
+summary(pc11)
+
+#use only comp with '***' significativity
+pc12 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
+summary(pc12)
+
+plot(pc12)
+
+scatter.smooth(pccorr$scores[,8],standfcorr$ViolentCrimesPerPop)
+```
+## Singular Value Decomposition
+
+An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$
+associated to the model, obtaining two unitary matrices $U$ and $V$ and a rectangular diagonal matrix of singular values $S$ such that
+$X = USV^T$, where the values on the diagonal of $S$ are sorted in descendent order and the first $k$ columns of $V$ select the
+correspondent first $k$ most informative combinantions of the attributes of the original dataset, i.e. if we call $V_k$ the matrix
+containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our dataset with just $k$ columns that contains the most part
+of information of $X$.
+
+```{r}
+# scaledf SVD
+SVDdf <- scaledf[,3:102]
+
+# SVD on the correlation matrix
+sv <- svd(SVDdf)
+
+# plot the singolar values
+barplot(sv$d)
+
+# SVD reduced model
+k <- 20
+V <- sv$v
+matrix(SVDdf)
+
+SVDreddf <- data.matrix(SVDdf) %*% V[,1:k]
+
+#C.sv??
+# check that U and V are the same in this case
+#sum(!C.sv$u-C.sv$v<0.000001)
+```
+
+```{r, eval=FALSE, include=FALSE}
+C <- cov(SVDdf)
+
+# plot the original singular values (our actual diagonal is squared)
+#barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
+barplot(sv$d)
+
+sv$d
+#sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
+
+#???
+```
+## Polynomial Regression
+
+non ci serve, linearity assump soddisfatta
+DA TOGLIERE, GIA FATTO SU
+```{r, eval=FALSE, include=FALSE}
+# fit using a second order polynomial in all var
+
+polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
+paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
+
+m2 <- lm(polyformula, data=as.data.frame(pccorr$scores))
+summary(m2)
+
+plot(m2)
+
+
+
+# fit using a 3 order polynomial in all var
+
+polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
+paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
+
+m3 <- lm(polyformula, data=as.data.frame(pccorr$scores))
+summary(m3)
+
+plot(m3)
+
+
+
+#usare solo se si hanno poche var in considerazione! dai risultati sembra che gli ordini superiori al primo non siano molto influenti...
+```
+### LDA e QDA
+servono delle assuzioni maggiori sui dati.. da controllare, discuterne
+```{r}
+lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+lda.fit
+
+lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
+lda.class <- lda.pred$class
+table(lda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(lda.class==cleandfcorr$ViolentCrimesFactor)
+
+#train err
+(87+183)/1996
+
+qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+qda.fit
+qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
+table(qda.class,cleandfcorr$ViolentCrimesFactor)
+#train err
+(118+189)/1996
+#train acc
+mean(qda.class==cleandfcorr$ViolentCrimesFactor)
+```
+
+
+```{r}
+#using train and test
+lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset=train)
+#lda.fit
+
+lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
+lda.class <- lda.pred$class
+table(lda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(lda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(lda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+
+qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47],subset=train)
+#qda.fit
+qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
+table(qda.class,cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(qda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(qda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+```
+ 
+```{r}
+#using train and test
+lreg.out1<-glm(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset = train)
+
+logistic.prob <- predict(lreg.out1, type="response") # want probability
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.71] <- "Low"
+table(logistic.pred, cleandfcorr$ViolentCrimesFactor)
+
+#train acc
+mean(logistic.pred[train]==cleandfcorr$ViolentCrimesFactor[train])
+#test acc
+mean(logistic.pred[-train]==cleandfcorr$ViolentCrimesFactor[-train])
+
+```
+
+
+```{r}
+# prova con il log
+plot_usmap(data = vc_state, values = "logViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "log(Violent Crimes +1)",label=scales::comma) +
+  theme(legend.position = "right")
+
+# con log fa schifo, con la radice meglio...
+plot_usmap(data = vc_state, values = "sqrtViolentCrimesMean", color = "black") +
+  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "sqrt(Violent Crimes)",label=scales::comma) +
+  theme(legend.position = "right")
+```
+
+## Altri Plot a caso
+### State Aggregation - data analysis
+
+Maps plot on mean values per state ... vogliamo in caso tenerne qualcuno?
+
+```{r, include=FALSE}
+#plot mean some predictor and all response vars per state
+
+dataf=cleandf
+
+
+for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
+  dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
+  names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
+  names(dataaggr)[names(dataaggr) == "x"] <- colnames(dataf)[i]
+  
+  mycol=c("#00AFBB", "#E7B800", "#FC4E07")[i%%3 + 1]
+
+
+  pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
+    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) + 
+    theme(legend.position = "right")
+  
+  print(pl)
+
+}
+```
+
+### Pairs plot
+
+
+```{r}
+# pairs plot prova
+pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,data=cleandf)
+```
+
+```{r}
+#scatter plot between all predictor vs ViolentCrimesPerPop (tantii)
+par(mfrow=c(2,2))
+
+#dataf=cleandf
+#seq(3,dim(dataf)[2]-18)
+
+#for(i in seq(3,dim(dataf)[2]-18)) {
+  
+  #scatter.smooth(dataf[,i],dataf$ViolentCrimesPerPop, xlab=colnames(dataf[i]), ylab='ViolentCrimesPerPop')
+
+#}
+
+par(mfrow=c(1,1))
+
+```
 
 
 # Utili da tenere come esempi a voce nel caso chiedesse di più sulla features selection
