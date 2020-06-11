@@ -9,12 +9,15 @@ output: pdf_document
 knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 ```
 
-```{r include=FALSE}
+```{r , include=FALSE}
 library(car)
-#install.packages("corrplot")
+
 library(ggplot2)
-#install.packages("usmap")
+
+# install.packages("usmap")
+
 library(usmap)
+
 # install.packages("varhandle", dependencies = T)
 library(varhandle)
 
@@ -23,6 +26,12 @@ library(pROC)
 library(MASS)
 
 library(class)
+
+# install.packages('corrplot')
+library(corrplot)
+
+# install.packages('factoextra')
+library(factoextra)
 
 
 set.seed(1)
@@ -39,7 +48,6 @@ We know from documentation that missing values are stored as "?".
 ```{r}
 # import dataset
 crimedata <- read.csv("crimedata.csv", na.strings="?")
-#View(crimedata)
 dim(crimedata)
 ```
 2215 rows and 147 columns
@@ -51,7 +59,7 @@ Attributes information:
 * 18 potential predictor (??? intendete response?) (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries,
   burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
 
-From UCI description (see https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized) we know that the variables communityname and state are nominal while the remaining are all numeric.
+From UCI description (see ref sito web [num bibliografia]) we know that the variables communityname and state are nominal while the remaining are all numeric.
 ```{r}
 # check if variables communityname and state are stored as factors
 is.factor(crimedata$communityname)
@@ -75,12 +83,8 @@ mean(is.na(crimedata))
 More than 10% of values is missing.
 
 ```{r}
-# install.packages("varhandle", dependencies = T)
-# library(varhandle)
-nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
-
 # nadf dataframe with columns that present NA 
-#nadf
+nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 ```
 There are 41 columns with missing values, many of them with more than 50% of the data missing.
 Among them:
@@ -114,7 +118,7 @@ of other columns). We decided to keep the other columns with zero values due to 
 # Find columns with > 50% NA
 coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
 
-#add other columns to remove
+# add other columns to remove
 coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
 coltodrop
 ```
@@ -124,7 +128,7 @@ Firstly, all columns with > 50% NA are removed.
 ```{r}
 # Drop columns with > 50% NA and clearly redundant ones
 cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
-#View(cleandf)
+
 ```
 
 Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
@@ -181,13 +185,25 @@ sum(is.na(cleandf))
 dim(cleandf)
 ```
 
-```{r}
+```{r , include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
 rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 ```
 
 
-# Exploratory Data Analysis - Assessing Assumptions for Linear Models
+# Standardization
+
+```{r}
+# Standardization using an home made function 
+standardization <- function(x) {
+return ((x - mean(x)) / sd(x))
+}
+
+standf <- cleandf
+standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
+```
+
+# Exploratory Data Analysis 
 ```{r, include=FALSE}
 Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
 Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
@@ -198,35 +214,31 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
 ```
 
 ```{r}
+boxplot(cleandf$ViolentCrimesPerPop~cleandf$state, col= Col)
+boxplot(standf$ViolentCrimesPerPop~standf$state, col= Col)
+boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, col= Col)
+```
+
+```{r}
 # Violent Crimes per 100K Population - State aggregation - Mean
 vc_state <- aggregate(cleandf[, "ViolentCrimesPerPop"], list(cleandf$state), mean)
 names(vc_state)[names(vc_state) == "Group.1"] <- "state"
 names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
-# aggiunte
-vc_state['logViolentCrimesMean'] <- log(vc_state['ViolentCrimesMean']+1)
-vc_state['sqrtViolentCrimesMean'] <- sqrt(vc_state['ViolentCrimesMean'])
-```
-
-```{r, fig.height = 3, fig.align = "center"}
-par(mfrow=c(1,1))
-plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
-  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "Violent Crimes",label=scales::comma) +
-  theme(legend.position = "right")
-
-# prova con il log
-plot_usmap(data = vc_state, values = "logViolentCrimesMean", color = "black") +
-  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "log(Violent Crimes +1)",label=scales::comma) +
-  theme(legend.position = "right")
-
-# con log fa schifo, con la radice è già meglio...
-plot_usmap(data = vc_state, values = "sqrtViolentCrimesMean", color = "black") +
-  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "sqrt(Violent Crimes)",label=scales::comma) +
-  theme(legend.position = "right")
 ```
 
 ```{r}
 summary(vc_state$ViolentCrimesMean)
 ```
+
+```{r, fig.height = 3, fig.align = "center"}
+par(mfrow=c(1,1))
+plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
+   scale_fill_continuous(trans="sqrt", low = Rgb[3], high = Rgb[1], name = "Violent Crimes",limits=c(85,3049),
+label=scales::comma)+
+  theme(legend.position = "right")
+
+```
+
 
 ```{r}
 par(mfrow=c(1,2))
@@ -237,10 +249,15 @@ hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main
 lines(density(log(cleandf$ViolentCrimesPerPop +1)))
 par(mfrow=c(1,1))
 
-# aggiunto, da tenere? Solo se teniamo il grafico secondo me
-hist(sqrt(cleandf$ViolentCrimesPerPop), prob=TRUE, breaks=30, col=Col[1], main="sqrt(Violent Crimes)")
-lines(density(sqrt(cleandf$ViolentCrimesPerPop)))
+
+par(mfrow=c(1,2))
+hist(standf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(standf$ViolentCrimesPerPop))
+
+hist(log(standf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(standf$ViolentCrimesPerPop +1)))
 par(mfrow=c(1,1))
+
 ```
 
 ```{r}
@@ -252,10 +269,14 @@ qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
 qqline(log(cleandf$ViolentCrimesPerPop +1))
 par(mfrow=c(1,1))
 
-# aggiunto, da tenere? Questo direi di no
-qqnorm(sqrt(cleandf$ViolentCrimesPerPop), main="log(Violent Crimes +1)")
-qqline(sqrt(cleandf$ViolentCrimesPerPop))
+par(mfrow=c(1,2))
+qqnorm(standf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(standf$ViolentCrimesPerPop)
+
+qqnorm(log(standf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(standf$ViolentCrimesPerPop +1))
 par(mfrow=c(1,1))
+
 ```
 
 ```{r}
@@ -283,10 +304,15 @@ names(nvc_state)[names(nvc_state) == "Group.1"] <- "state"
 names(nvc_state)[names(nvc_state) == "x"] <- "NonViolentCrimesMean"
 ```
 
+```{r}
+summary(nvc_state$NonViolentCrimesMean)
+```
+
 ```{r, fig.height = 3, fig.align = "center"}
 par(mfrow=c(1,1))
 plot_usmap(data = nvc_state, values = "NonViolentCrimesMean", color = "black") +
-  scale_fill_continuous(low = Rgb[3], high = Rgb[1], name = "Non Violent Crimes",label=scales::comma) +
+   scale_fill_continuous(trans="sqrt",low = Rgb[3], high = Rgb[1], name = "Non Violent Crimes",limits=c(2825,9252),
+label=scales::comma)+
   theme(legend.position = "right")
 ```
 
@@ -298,6 +324,14 @@ lines(density(cleandf$nonViolPerPop))
 hist(log(cleandf$nonViolPerPop+1), prob=TRUE, breaks=30, col=Col[2], main="log(Non Violent Crimes +1)")
 lines(density(log(cleandf$nonViolPerPop+1)))
 par(mfrow=c(1,1))
+
+par(mfrow=c(1,2))
+hist(standf$nonViolPerPop, prob=TRUE, breaks=30, col=Col[2], main="Non Violent Crimes")
+lines(density(standf$nonViolPerPop))
+
+hist(log(standf$nonViolPerPop+1), prob=TRUE, breaks=30, col=Col[2], main="log(Non Violent Crimes +2)")
+lines(density(log(standf$nonViolPerPop+2)))
+par(mfrow=c(1,1))
 ```
 
 ```{r}
@@ -307,6 +341,14 @@ qqline(cleandf$nonViolPerPop)
 
 qqnorm(log(cleandf$nonViolPerPop +1), main="log(Non Violent Crimes +1)")
 qqline(log(cleandf$nonViolPerPop +1))
+par(mfrow=c(1,1))
+
+par(mfrow=c(1,2))
+qqnorm(standf$nonViolPerPop, main="Non Violent Crimes")
+qqline(standf$nonViolPerPop)
+
+qqnorm(log(standf$nonViolPerPop +2), main="log(Non Violent Crimes +2)")
+qqline(log(standf$nonViolPerPop +2))
 par(mfrow=c(1,1))
 ```
 
@@ -328,88 +370,37 @@ boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)])
 par(mfrow=c(1,1))
 ```
 
-## Altri Plot a caso
-### State Aggregation - data analysis
-
-Maps plot on mean values per state ... vogliamo in caso tenerne qualcuno?
-
-```{r, include=FALSE}
-#plot mean some predictor and all response vars per state
-
-dataf=cleandf
-
-
-for(i in c(3,13,26,29,44, seq(dim(dataf)[2]-16,dim(dataf)[2]-2, by=2),dim(dataf)[2]-1,dim(dataf)[2])) {
-  dataaggr <- aggregate(dataf[, colnames(dataf)[i]], list(dataf$state), mean)
-  names(dataaggr)[names(dataaggr) == "Group.1"] <- "state"
-  names(dataaggr)[names(dataaggr) == "x"] <- colnames(dataf)[i]
-  
-  mycol=c("#00AFBB", "#E7B800", "#FC4E07")[i%%3 + 1]
-
-
-  pl<-plot_usmap(data = dataaggr, values = colnames(dataf)[i], color = 1) + 
-    scale_fill_continuous(low = "white", high= mycol, name = colnames(dataf)[i], label = scales::comma) + 
-    theme(legend.position = "right")
-  
-  print(pl)
-
-}
-```
-
-### Pairs plot
-
-
-```{r}
-# pairs plot prova
-pairs(~ medIncome+racepctblack+racePctAsian+racePctWhite+ViolentCrimesPerPop,data=cleandf)
-```
-
-```{r}
-#scatter plot between all predictor vs ViolentCrimesPerPop (tantii)
-par(mfrow=c(2,2))
-
-#dataf=cleandf
-#seq(3,dim(dataf)[2]-18)
-
-#for(i in seq(3,dim(dataf)[2]-18)) {
-  
-  #scatter.smooth(dataf[,i],dataf$ViolentCrimesPerPop, xlab=colnames(dataf[i]), ylab='ViolentCrimesPerPop')
-
-#}
-
-par(mfrow=c(1,1))
-
+```{r , include=FALSE}
+# Remove all variables from environment excpet the cleaned and the original dataset
+rm(list=setdiff(ls(), c("cleandf", "crimedata","standf")))
 ```
 
 
 
+# Multiple linear regression
 
-# Split in Train and Test / validation Folds
-da mettere prima dei primi modelli
-```{r}
-train <- sample(rownames(cleandf), 1600)
-```
-
-# Multiple linear regression: response = ViolentCrimesPerPop
+response = ViolentCrimesPerPop (forcing the assumpition of equal mean between state t)
 
 Remove non predictive variables:
 communityname, state, all crimes except variable ViolentCrimesPerPop
 ```{r}
 coltodrop <- c(1,2, seq(103,120)[-17]) # -17 keeps ViolentCrimesPerPop
 
-df <- cleandf[,-coltodrop]
+df <- standf[,-coltodrop]
 ```
 
 Multiple Linear Regression
 ```{r}
-reg.out <- lm(df$ViolentCrimesPerPop~., data=df)
+reg.out <- lm(ViolentCrimesPerPop~., data=df)
 ```
 
 ```{r}
-se  <- summary(reg.out)$sigma         # se
-rsq <- summary(reg.out)$r.squared     # R^2
+se  <- summary(reg.out)$sigma                  # se
+rsq <- summary(reg.out)$r.squared              # R^2
+adrsq <- summary(reg.out)$adj.r.squared        # adj R^2
 cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2))
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
 
 ```{r}
@@ -417,25 +408,6 @@ par(mfrow=c(2,2))
 plot(reg.out)
 par(mfrow=c(1,1))
 ```
-
-```{r}
-# train and test MSE
-
-# linear model with training data
-lm.fit <- lm(df$ViolentCrimesPerPop~., data=df, subset=train)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fit, newdata=df[train, ])
-MSE <- mean((df$ViolentCrimesPerPop[train]-y.pred)^2)
-MSE
-
-# mean squared error on test
-y.pred <- predict(lm.fit, newdata=df[-train, ])
-MSE <- mean((df$ViolentCrimesPerPop[-train]-y.pred)^2)
-MSE 
-```
-
 
 ## Assessing Model Assumptions:
 The model assumptions are:
@@ -453,14 +425,16 @@ The presence of a funnel shape in the residual plot suggests that the error term
 is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
 ```{r}
-reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
+reg.out2 <- lm(log(ViolentCrimesPerPop+1)~., data=df)
 ```
 
 ```{r}
-se  <- summary(reg.out2)$sigma         # se
-rsq <- summary(reg.out2)$r.squared     # R^2
+se  <- summary(reg.out2)$sigma                  # se
+rsq <- summary(reg.out2)$r.squared              # R^2
+adrsq <- summary(reg.out2)$adj.r.squared        # adj R^2
 cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2))
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
 
 ```{r}
@@ -471,23 +445,6 @@ par(mfrow=c(1,1))
 
 The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity.
 
-```{r}
-#train and test MSE
-
-# linear model with training data
-lm.fit2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df, subset=train)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fit2, newdata=df[train, ])
-MSE <- mean((log(df$ViolentCrimesPerPop[train]+1)-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fit2, newdata=df[-train, ])
-MSE <- mean((log(df$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
-MSE 
-```
 
 ### Normality and Independence of errors
 We assess normality looking to the QQplot....
@@ -501,7 +458,8 @@ the point to be an outlier. To address this problem, instead of plotting the res
 by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute
 value are possible outliers.
 
-Note: Why 3? The Studentized Residuals are approximated by a N(0,1). The probability to observe a value greater than 3 is 0.001349898.
+Note: Why 3? The Studentized Residuals are approximated by a N(0,1). The probability to observe a value greater than 3 is 0.001349898. [ref biblio?]
+
 ```{r}
 1 - pnorm(3)
 ```
@@ -512,21 +470,26 @@ plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Stude
 abline(h=3, col = "red")
 abline(h=-3, col = "red")
 ```
+Explore and interpret city of outliers...?
 
 ```{r}
-out <- as.numeric(names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)]))
-outdf <- df[!(rownames(df) %in% out),]
+out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
+
+standf[out,c(1,2)]
 ```
 
 ```{r}
-reg.out3 <- lm(log(outdf$ViolentCrimesPerPop+1)~., data=outdf)
+# regression without outliers
+reg.out3 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% out),])
 ```
 
 ```{r}
-se  <- summary(reg.out3)$sigma         # se
-rsq <- summary(reg.out3)$r.squared     # R^2
+se  <- summary(reg.out3)$sigma                  # se
+rsq <- summary(reg.out3)$r.squared              # R^2
+adrsq <- summary(reg.out3)$adj.r.squared        # adj R^2
 cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2))
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
 
 ```{r}
@@ -535,25 +498,7 @@ plot(reg.out3)
 par(mfrow=c(1,1))
 ```
 
-```{r}
-#train and test MSE
-to=sample(1:1978,1590)
-# linear model with training data
-lm.fit3 <- lm(log(outdf$ViolentCrimesPerPop+1)~., data=outdf, subset=to)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fit3, newdata=outdf[to, ])
-MSE <- mean((log(outdf$ViolentCrimesPerPop[to]+1)-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fit3, newdata=outdf[-to, ])
-MSE <- mean((log(outdf$ViolentCrimesPerPop[-to]+1)-y.pred)^2)
-MSE 
-```
-
-The RSE is 0.65 when the outlier is included in the regression and it is 0.59 when the outlier is removed. Since the RSE is used to
+The RSE is 0.56 when the outlier is included in the regression and it is 0.52 when the outlier is removed. Since the RSE is used to
 compute all confidence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
 outliers the $R^2$ increses from 0.67 to 0.7.
 Care should be taken in the decision of taking or dropping outliers.
@@ -563,45 +508,39 @@ In order to quantify an observations leverage, we compute the leverage statistic
 greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
 
 ```{r}
-plot(hatvalues(reg.out2), rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
+hv <- hatvalues(reg.out2)
+plot(hv, rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
 
 p <- dim(df)[2]-1
 n <- dim(df)[1]
 abline(v=(p+1)/n, col = "red")
 ```
-E ora....???
 
-Try removing high leverage points vedi https://online.stat.psu.edu/stat462/node/171/
+
+Try removing high leverage points [ref biblio]
+explore city state leverage interpret?
 
 ```{r}
+lev <- names(hv[hv>3*(p+1)/n])
+standf[lev,c(1,2)]
+```
 
-whereh<-hatvalues(reg.out2)>3*(p+1)/n
-sum(whereh) # 56 punti
+```{r}
+# regression without leverage points
+reg.out4 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% lev),])
 
-#hatvalues contains the diag of the hat matrix
-
-
-plot(hatvalues(reg.out2)[!whereh], rstandard(reg.out2)[!whereh], xlab="Leverage", ylab = "Studentized Residuals")
-abline(v=(p+1)/n, col = "red")
-
-reg.out4 <- lm(log(df$ViolentCrimesPerPop[!whereh]+1)~., data=df[!whereh,])
-
-plot(reg.out4)
-
-se  <- summary(reg.out4)$sigma         # se
-rsq <- summary(reg.out4)$r.squared     # R^2
+se  <- summary(reg.out4)$sigma                  # se
+rsq <- summary(reg.out4)$r.squared              # R^2
+adrsq <- summary(reg.out4)$adj.r.squared        # adj R^2
 cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2))
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
 
-
-#computing H by hand
-
-#X matrix of predictors values
-#X<- data.matrix(df[,1:100])
-#H <- X %*% solve(t(X) %*% X) %*% t(X)
-
-#diag(H) #uguale ad hatvalues yee
-
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out4)
+par(mfrow=c(1,1))
 ```
 
 Con questo cut non sembra esserci molta differenza... ma RSE diminuisce di qualche millesimo.. e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
@@ -609,23 +548,6 @@ a high leverage observation may or may not actually be influential, a data point
 
 Facendo un cut maggiore usando 2*.. l'errore riaumenta
 
-```{r}
-#train and test MSE
-
-# linear model with training data
-lm.fit4 <- lm(log(df$ViolentCrimesPerPop[!whereh]+1)~., data=df[!whereh,], subset=train[-whereh])
-
-
-# mean squared error on train
-y.pred <- predict(lm.fit4, newdata=df[train[-whereh], ])
-MSE <- mean((log(df$ViolentCrimesPerPop[train[-whereh]]+1)-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fit4, newdata=df[-c(train,whereh), ])
-MSE <- mean((log(df$ViolentCrimesPerPop[-c(train,whereh)]+1)-y.pred)^2)
-MSE 
-```
 
 
 ### Collinearity 
@@ -655,18 +577,14 @@ correlated ones, the more redundant and meaningless.
 
 ```{r}
 # restrict to the predictive numeric attributes
-#corrdf <- cleandf[1:102]
-#corrdf <- corrdf[sapply(corrdf,is.numeric)] # first two columns removed
-corrdf <- df[1:100]
-#corrdf e come df senza ultima colonna, magari mettiamo quella cosi' non abbiamo 1000 dframes
-
-#View(corrdf)
+coltodrop <- c(1,2, seq(103,120))
+corrdf <- cleandf[,-coltodrop]
 
 # correlation matrix
 cm <- cor(corrdf, use='complete.obs')
 
-# install.packages('corrplot')
-library(corrplot)
+par(mfrow=c(1,2)) 
+
 # correlation matrix plot
 corrplot(cm,title='Initial correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
 
@@ -679,23 +597,42 @@ cma <- abs(cm) > threshold
 
 # filtered correlation matrix plot
 corrplot(cma,title='Filtered correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+
+par(mfrow=c(1,1))
 ```
 
 ??? Spiega le scelte e soprattutto quella a 0.7!
 
 ```{r}
 # columns with correlation with more meaningful ones higher than threshold in absolute value
-rem9 <- c(1,9,11,17,20,21,28,30,38,39,41,44,45,50,54,56,58,59,60,61,64,65,74,80,82,83,85,86,90,91,92)
-rem8 <- c(rem9,2,4,8,13,14,18,29,43,46,49,51,55,62,69,81,84,95)
-rem7 <- c(rem8,16,31,32,63,70,71,96)
-#colnames(corrdf)[rem7]
 
-corrdf_ind <- corrdf[-rem7]
+rem9 <- c( 
+"population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",        "NumUnderPov","PctLess9thGrade","PctOccupMgmtProf","MalePctDivorce","FemalePctDiv","PctFam2Par",       
+"PctKids2Par" ,"NumKidsBornNeverMar", "PctImmigRec5","PctImmigRec10",      
+"PctRecImmig5","PctRecImmig8","PctRecImmig10","PctSpeakEnglOnly" ,  
+"PctLargHouseOccup","PersPerOccupHous","PctHousOwnOcc","OwnOccLowQuart",     
+"OwnOccHiQuart","RentLowQ","RentHighQ","MedRent",            
+"NumInShelters","NumStreet","PctForeignBorn")
+
+rem8 <- c(rem9,
+"householdsize","racePctWhite","agePct12t29","medIncome",
+"pctWWage","pctWPubAsst","PctPopUnderPov","PersPerFam",         
+"PctYoungKids2Par","PctWorkMom","PctKidsBornNeverMar", "PctImmigRec8",       
+"PctNotSpeakEnglWell", "PctPersDenseHous","OwnOccMedVal","RentMedian",         
+"PctSameCity85")
+
+rem7 <- c(rem8,
+"pctWInvInc","PctNotHSGrad","PctBSorMore","PctLargHouseFam","PctHousLess3BR", 
+"MedNumBR","PctSameState85" )
+
+
+corrdf_ind <- corrdf[,!(colnames(corrdf) %in% rem7)]
 
 # final correlation matrix and filter
 cm_ind <- cor(corrdf_ind, use='complete.obs')
 cma_ind <- abs(cm_ind) > threshold
 
+par(mfrow=c(1,1))
 # resulting filtered correlation matrix plot
 corrplot(cma_ind, title='Filtered correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
@@ -716,26 +653,13 @@ corrplot(cma_ind, title='Filtered correlation matrix', method='color', type='low
 # 0.7
 # OK NumImmig and HousVacant (52 and 72, unanimity)
 
-coltodropcorr <- colnames(corrdf)[rem7]
-
-cleandfcorr <- cleandf[,!(names(cleandf) %in% coltodropcorr)]
-
 # final correlation matrix plot
 corrplot(cm_ind, title='Final correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+
+par(mfrow=c(1,1))
 ```
 
 
-#### Multicollinearity
-Unfortunately, not all collinearity problems can be
-detected by inspection of the correlation matrix.... VIF? 
-
-```{r}
-
-reg.out2 <- lm(log(df$ViolentCrimesPerPop+1)~., data=df)
-
-sum(vif(reg.out2)>10) #siamo nella cacca? 68 colonne da qui... ignoriamo la cosa e andiamo avanti? piu che atro non ho capito bene come funziona questo vif
-
-```
 
 When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression
 fit, since the presence of collinearity implies that the information that this
@@ -747,139 +671,70 @@ to combine the collinear variables together into a single predictor.
 
 qui da provare il modello con le colonne tolte dalle analisi sulle collinearity??
 ```{r}
+corrdf <- df[,!(colnames(df) %in% rem7)]
 
-reg.out5 <- lm(log(cleandfcorr$ViolentCrimesPerPop+1)~., data=cleandfcorr[-c(1,2, seq(48,65)[-17])
-])
-
-plot(reg.out5)
-
-se  <- summary(reg.out5)$sigma         # se
-rsq <- summary(reg.out5)$r.squared     # R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2))
-
+reg.out5 <- lm(log(ViolentCrimesPerPop+1)~., data=corrdf)
 #summary(reg.out5)
 
-```
-
-RSE aumenta.. ma massimo R^2 fino ad ora
-
-```{r}
-#train and test MSE
-
-# linear model with training data
-lm.fit5 <- lm(log(cleandfcorr$ViolentCrimesPerPop+1)~., data=cleandfcorr[-c(1,2, seq(48,65)[-17])], subset=train)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fit5, newdata=cleandfcorr[train,-c(1,2, seq(48,65))])
-MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[train]+1)-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fit5, newdata=cleandfcorr[-train,-c(1,2, seq(48,65))])
-MSE <- mean((log(cleandfcorr$ViolentCrimesPerPop[-train]+1)-y.pred)^2)
-MSE 
-```
-
-# Other possible transforms of data
-## Standardization
-
-```{r}
-# Standardization using scale
-scaledf <- cleandf
-scaledf[seq(3,dim(scaledf)[2])] <- scale(cleandf[seq(3,dim(cleandf)[2])] )
-```
-
-## Outliers
-```{r}
-# Remove row if one of its value is
-# 3 times greater than the upper interquartile bound or
-# 3 times lower than the lower interquartile bound
-
-is.out.IQR <- function(x){
-  Q <- quantile(x, probs=c(.25, .75))
-  iqr <- IQR(x)
-  up <-  Q[2]+3*iqr # Upper bound  
-  low <- Q[1]-3*iqr # Lower bound
-  out <- (x < low | x > up)
-  return(out)
-}
-
-is.out.sd <- function(x){
-  sd <- sd(x)
-  up <-  mean(x)+3*sd # Upper bound  
-  low <- mean(x)-3*sd # Lower bound
-  out <- (x < low | x > up)
-  return(out)
-}
-
-temp <- standf
-temp[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], is.out.IQR)
-
-temp <- inspect.na(temp, hist=FALSE, byrow=TRUE, barplot=FALSE, na.value=TRUE)
-rowtodrop_s <- temp$row_name
-
-standf_nO <- standf[!(rownames(standf) %in% rowtodrop_s),]
+se  <- summary(reg.out5)$sigma                  # se
+rsq <- summary(reg.out5)$r.squared              # R^2
+adrsq <- summary(reg.out5)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
 
 ```{r}
-# Remove all variables from environment excpet ...
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "scaledf", "df", "train")))
+par(mfrow=c(2,2))
+plot(reg.out5)
+par(mfrow=c(1,1))
 ```
 
+```{r, include=FALSE}
+# Remove all variables from environment excpet the cleaned and the original dataset
+rm(list=setdiff(ls(), c("cleandf", "crimedata","standf","df","corrdf")))
+```
+
+# Split in Train and Test / validation Folds
+
+```{r}
+#train <- sample(rownames(cleandf), 1600) # leave as strings to select original indexes
+train <- sample(1:1996, 1600) #piu comodo per ora
+```
 
 # Variables selection
 
 ## Principal Component Analysis
 
 ```{r}
-# choose the version of the df you prefer (cleandf, scaledf)
-PCAdf <- standf[,3:(dim(standf)[2]-18)]
-
 # PCA computation
-pc <- princomp(PCAdf, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
+pc <- princomp(corrdf[,-dim(corrdf)[2]], cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
 
-str(pc)
+#str(pc)
 # first k principal components
 k <- 40
 plot(pc, npcs=k, cex.names=0.5,las=2, col="#00AFBB", main='Principal Components')
 
-barplot(pc$loadings[,1], cex.names=0.5,las=2, col=  "#FC4E07")
+par(mfrow=c(1,2))
+barplot(pc$loadings[,1], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 1')
+barplot(pc$loadings[,2], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 2')
+barplot(pc$loadings[,3], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 3')
+barplot(pc$loadings[,4], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 4')
+barplot(pc$loadings[,5], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 5')
+barplot(pc$loadings[,6], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 6')
+barplot(pc$loadings[,7], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 7')
+barplot(pc$loadings[,8], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 8')
+barplot(pc$loadings[,9], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 9')
+barplot(pc$loadings[,10], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 10')
+par(mfrow=c(1,1))
 
-infl1 <- colnames(PCAdf)[abs(pc$loadings[,1])>0.15]
+#influent features per component 1 e 2
+infl1 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,1])>0.15]
 infl1
+infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.15]
+infl2
 
-#install.packages('factoextra')
-library(factoextra)
 fviz_pca_var(pc,
-             col.var = "contrib", # Color by contributions to the PC
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = T,     # Avoid text overlapping
-             select.var = list(contrib = 15)
-             )
-
-
-
-
-PCAdfcorr <- standfcorr[,3:(dim(standfcorr)[2]-18)]
-
-# PCA computation
-pccorr <- princomp(PCAdfcorr, cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
-
-str(pccorr)
-# first k principal components
-k <- 40
-plot(pccorr, npcs=k, cex.names=0.5,las=2, col="#00AFBB", main='Principal Components')
-
-barplot(pccorr$loadings[,1], cex.names=0.5,las=2, col=  "#FC4E07")
-
-infl1corr <- colnames(PCAdfcorr)[abs(pccorr$loadings[,1])>0.15]
-infl1corr
-
-#install.packages('factoextra')
-library(factoextra)
-fviz_pca_var(pccorr,
              col.var = "contrib", # Color by contributions to the PC
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = T,     # Avoid text overlapping
@@ -889,212 +744,151 @@ fviz_pca_var(pccorr,
 
 
 PC regression
-```{r}
-
-#use corresponding pc 
-pc0 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores))
-summary(pc0)
-
-#use only first 15 comp
-pc01 <- lm(standf$ViolentCrimesPerPop~., data=as.data.frame(pc$scores[,1:15]))
-summary(pc01)
-
-#use corresponding pc 
-pc1 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores))
-summary(pc1)
-
-#use only first 10 comp
-pc11 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,1:15]))
-summary(pc11)
-
-#use only comp with '***' significativity
-pc12 <- lm(standfcorr$ViolentCrimesPerPop~., data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
-summary(pc12)
-
-plot(pc12)
-
-scatter.smooth(pccorr$scores[,8],standfcorr$ViolentCrimesPerPop)
-```
-
-no log transf
 
 ```{r}
-#train and test MSE
-tp<-sample(1:1280,1000)
-pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
+reg.pc <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores))
+#summary(reg.pc)
 
-# linear model with training data
-lm.fitPC <- lm(standfcorr$ViolentCrimesPerPop~., data=pcdf, subset=tp)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
-MSE <- mean((standfcorr$ViolentCrimesPerPop[tp]-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
-MSE <- mean((standfcorr$ViolentCrimesPerPop[-tp]-y.pred)^2)
-MSE 
+se  <- summary(reg.pc)$sigma                  # se
+rsq <- summary(reg.pc)$r.squared              # R^2
+adrsq <- summary(reg.pc)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
-
-con trasf
 ```{r}
-#train and test MSE
-tp<-sample(1:1280,1000)
-pcdf<-as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])
-
-# linear model with training data
-lm.fitPC <- lm(log(standfcorr$ViolentCrimesPerPop+1)~., data=pcdf, subset=tp)
-
-
-# mean squared error on train
-y.pred <- predict(lm.fitPC, newdata=pcdf[tp,])
-MSE <- mean((log(standfcorr$ViolentCrimesPerPop[tp]+1)-y.pred)^2)
-MSE 
-
-# mean squared error on test
-y.pred <- predict(lm.fitPC, newdata=pcdf[-tp,])
-MSE <- mean((log(standfcorr$ViolentCrimesPerPop[-tp]+1)-y.pred)^2)
-MSE 
+par(mfrow=c(2,2))
+plot(reg.pc)
+par(mfrow=c(1,1))
 ```
-
-## Singular Value Decomposition
-
-An alternative way to reduce the dimensionality of the dataset is to compute the Singular Value Decomposition on the matrix $X$
-associated to the model, obtaining two unitary matrices $U$ and $V$ and a rectangular diagonal matrix of singular values $S$ such that
-$X = USV^T$, where the values on the diagonal of $S$ are sorted in descendent order and the first $k$ columns of $V$ select the
-correspondent first $k$ most informative combinantions of the attributes of the original dataset, i.e. if we call $V_k$ the matrix
-containing the first $k$ columns of $V$, $X_k=XV_k$ is a transformation of our dataset with just $k$ columns that contains the most part
-of information of $X$.
 
 ```{r}
-# scaledf SVD
-SVDdf <- scaledf[,3:102]
+reg.pc1 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:15]))
+#summary(reg.pc)
 
-# SVD on the correlation matrix
-sv <- svd(SVDdf)
-
-# plot the singolar values
-barplot(sv$d)
-
-# SVD reduced model
-k <- 20
-V <- sv$v
-matrix(SVDdf)
-
-SVDreddf <- data.matrix(SVDdf) %*% V[,1:k]
-
-#C.sv??
-# check that U and V are the same in this case
-#sum(!C.sv$u-C.sv$v<0.000001)
+se  <- summary(reg.pc1)$sigma                  # se
+rsq <- summary(reg.pc1)$r.squared              # R^2
+adrsq <- summary(reg.pc1)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc1)
+par(mfrow=c(1,1))
 ```
 
-```{r, eval=FALSE, include=FALSE}
-C <- cov(SVDdf)
+```{r}
+reg.pc2 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:10]))
+#summary(reg.pc2)
 
-# plot the original singular values (our actual diagonal is squared)
-#barplot(sqrt(C.sv$d)*(dim(SVDdf)[1]-1))
-barplot(sv$d)
+se  <- summary(reg.pc2)$sigma                  # se
+rsq <- summary(reg.pc2)$r.squared              # R^2
+adrsq <- summary(reg.pc2)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 
-sv$d
-#sqrt(C.sv$d)*(dim(SVDdf)[1]-1)
-
-#???
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc2)
+par(mfrow=c(1,1))
 ```
 
-## Backward - Forward elimination
 
-or other greedy search
+## Backward / Forward elimination
 
-aic Bic, Cp, adj R2...check also the p val, confounding..
+MSE, adj R2...check also the p val, confounding..
 vedi slides 454 - 484 rovers
 
 ## Cross Valitation
 
+## Lasso / Ridge Regularized models
+
+
 # Other possible predictive Models
+No Bayesian regression, non abbiamo possibili valori ipotesi iniziali ...
+No polinomial regr.. la cond di linearità è soddisfatta....
 
-## Polynomial Regression
+## Add categorical predictor
 
-non ci serve, linearity assump soddisfatta
-DA TOGLIERE, GIA FATTO SU
-```{r, eval=FALSE, include=FALSE}
-# fit using a second order polynomial in all var
+state seems not influential
 
-polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
-paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 2)', sep=''), collapse=" + ")))
+```{r}
+is.factor(standf$state) 
+#contrasts(standf$state)
+corrdf["state"]=standf$state
+is.factor(corrdf$state) 
 
-m2 <- lm(polyformula, data=as.data.frame(pccorr$scores))
-summary(m2)
+regc.out <- lm(log(ViolentCrimesPerPop + 1)~. , data=corrdf) #application of LR with a categorical variable
+summary(regc.out)
 
-plot(m2)
-
-
-
-# fit using a 3 order polynomial in all var
-
-polyformula <- eval(paste("standfcorr$ViolentCrimesPerPop ~",
-paste(paste('poly(', names(as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)])), ', 3)', sep=''), collapse=" + ")))
-
-m3 <- lm(polyformula, data=as.data.frame(pccorr$scores))
-summary(m3)
-
-plot(m3)
-
-
-
-#usare solo se si hanno poche var in considerazione! dai risultati sembra che gli ordini superiori al primo non siano molto influenti...
+se  <- summary(regc.out)$sigma                  # se
+rsq <- summary(regc.out)$r.squared              # R^2
+adrsq <- summary(regc.out)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
 ```
+```{r}
+par(mfrow=c(2,2))
+plot(regc.out)
+par(mfrow=c(1,1))
+```
+
 
 ## Multivariate Linear Regression
 
 questo potrebbe essere interessante per predirre anche le altre colonne crimes.. come si valuta?
+per alcune response i risultati sono molto validi, magari mostriamo MSE..
 ```{r}
 #predict all the crime features... 
-mm <- lm(data.matrix(standfcorr[,48:65]) ~. , data=as.data.frame(pccorr$scores[,c(1,2,5,8,9,10)]))
 
-#summary(m3) #long output
+mm <- lm(data.matrix(standf[,103:120]) ~., data=as.data.frame(pc$scores[,1:15]))
+#summary(mm) #long output
 
 ```
 
-## Bayesian regression?
-Issue... non abbiamo possibili valori ipotesi iniziali ...
+
 
 ## Binary classification models 
 pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... ha senso? 
 
 
-http://www.disastercenter.com/crime/uscrime.htm
-
 ```{r}
-avgviol<- 731
+# thresholf is the mean (0 since standardized)
 
-sum(df$ViolentCrimesPerPop>avgviol)
+sum(df$ViolentCrimesPerPop>0)
 ViolentCrimesFactor <- rep("Low", 1996)
-ViolentCrimesFactor[df$ViolentCrimesPerPop>avgviol] <- "High"
-df["ViolentCrimesFactor"]<-as.factor(ViolentCrimesFactor)
+ViolentCrimesFactor[df$ViolentCrimesPerPop>0] <- "High"
 
-is.factor(cleandfcorr$ViolentCrimesFactor)
+df["ViolentCrimesPerPop"]<-as.factor(ViolentCrimesFactor)
 
-cleandfcorr["ViolentCrimesFactor"]<-as.factor(ViolentCrimesFactor)
+is.factor(df$ViolentCrimesPerPop)
+
+corrdf["ViolentCrimesPerPop"]<-as.factor(ViolentCrimesFactor)
 
 ```
 
 ### Logistic regression
+
 ```{r}
-lreg.out<-glm(df$ViolentCrimesFactor ~ ., family = binomial, data=df[,-101])
+lreg.out<-glm(df$ViolentCrimesPerPop~., family = binomial, data=as.data.frame(pc$scores))
+
 summary(lreg.out)
 
 
 # check the coding of ViolentCrimesFactor
-contrasts(df$ViolentCrimesFactor)
+contrasts(df$ViolentCrimesPerPop)
 
 logistic.prob <- predict(lreg.out, type="response") # want probability
 
 # ROC curve 
 
 # levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(df$ViolentCrimesFactor, logistic.prob, levels=c("Low", "High"))
+roc.out <- roc(df$ViolentCrimesPerPop, logistic.prob, levels=c("Low", "High"))
 
 auc(roc.out)
 
@@ -1103,17 +897,49 @@ plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yla
 # threshold that maximises the sum of sensitivity and specificity
 coords(roc.out, "best")
 logistic.pred <- rep("High", 1996)
-logistic.pred[logistic.prob>0.75] <- "Low"
+logistic.pred[logistic.prob>0.61] <- "Low"
 
-table(logistic.pred, df$ViolentCrimesFactor)
+table(logistic.pred, df$ViolentCrimesPerPop)
 
 #train error
-(226+63)/1996
+(125+174)/1996
 
 ```
 
 ```{r}
-lreg.out1<-glm(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
+lreg.out<-glm(df$ViolentCrimesPerPop~., family = binomial, data=as.data.frame(pc$scores[,-c(11,12,14,18,19,23,26,27,seq(30,45))]))
+
+summary(lreg.out)
+
+
+# check the coding of ViolentCrimesFactor
+contrasts(df$ViolentCrimesPerPop)
+
+logistic.prob <- predict(lreg.out, type="response") # want probability
+
+# ROC curve 
+
+# levels = controls (0's) as first element and  cases (1's) as second
+roc.out <- roc(df$ViolentCrimesPerPop, logistic.prob, levels=c("Low", "High"))
+
+auc(roc.out)
+
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+# threshold that maximises the sum of sensitivity and specificity
+coords(roc.out, "best")
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.67] <- "Low"
+
+table(logistic.pred, df$ViolentCrimesPerPop)
+
+#train error
+(113+224)/1996
+
+```
+
+```{r}
+lreg.out1<-glm(ViolentCrimesPerPop ~ ., family = binomial, data=corrdf)
 summary(lreg.out)
 
 logistic.prob <- predict(lreg.out1, type="response") # want probability
@@ -1121,7 +947,7 @@ logistic.prob <- predict(lreg.out1, type="response") # want probability
 # ROC curve 
 
 # levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(cleandfcorr$ViolentCrimesFactor, logistic.prob, levels=c("Low", "High"))
+roc.out <- roc(corrdf$ViolentCrimesPerPop , logistic.prob, levels=c("Low", "High"))
 
 auc(roc.out)
 
@@ -1132,118 +958,37 @@ coords(roc.out, "best")
 logistic.pred <- rep("High", 1996)
 logistic.pred[logistic.prob>0.71] <- "Low"
 
-table(logistic.pred, cleandfcorr$ViolentCrimesFactor)
+table(logistic.pred, corrdf$ViolentCrimesPerPop)
 
 #train error
 (224+86)/1996
 
 #train acc
-mean(logistic.pred==cleandfcorr$ViolentCrimesFactor)
+mean(logistic.pred==corrdf$ViolentCrimesPerPop)
 
 ```
 
-```{r}
-#using train and test
-lreg.out1<-glm(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset = train)
-
-logistic.prob <- predict(lreg.out1, type="response") # want probability
-logistic.pred <- rep("High", 1996)
-logistic.pred[logistic.prob>0.71] <- "Low"
-table(logistic.pred, cleandfcorr$ViolentCrimesFactor)
-
-#train acc
-mean(logistic.pred[train]==cleandfcorr$ViolentCrimesFactor[train])
-#test acc
-mean(logistic.pred[-train]==cleandfcorr$ViolentCrimesFactor[-train])
-
-```
 risultati strani splittando
 
-### LDA e QDA
-servono delle assuzioni maggiori sui dati.. da controllare, discuterne
-```{r}
-lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
-lda.fit
-
-lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
-lda.class <- lda.pred$class
-table(lda.class,cleandfcorr$ViolentCrimesFactor)
-
-#train acc
-mean(lda.class==cleandfcorr$ViolentCrimesFactor)
-
-#train err
-(87+183)/1996
-
-qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47])
-qda.fit
-qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
-table(qda.class,cleandfcorr$ViolentCrimesFactor)
-#train err
-(118+189)/1996
-#train acc
-mean(qda.class==cleandfcorr$ViolentCrimesFactor)
-```
-
-
-```{r}
-#using train and test
-lda.fit <- lda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47], subset=train)
-#lda.fit
-
-lda.pred <- predict(lda.fit, cleandfcorr[,3:47])
-lda.class <- lda.pred$class
-table(lda.class,cleandfcorr$ViolentCrimesFactor)
-
-#train acc
-mean(lda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
-#test acc
-mean(lda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
-
-
-qda.fit <- qda(cleandfcorr$ViolentCrimesFactor ~ ., family = binomial, data=cleandfcorr[,3:47],subset=train)
-#qda.fit
-qda.class <- predict(qda.fit,cleandfcorr[,3:47])$class
-table(qda.class,cleandfcorr$ViolentCrimesFactor)
-
-#train acc
-mean(qda.class[train]==cleandfcorr$ViolentCrimesFactor[train])
-#test acc
-mean(qda.class[-train]==cleandfcorr$ViolentCrimesFactor[-train])
-
-```
-
+LDA QDA non li usiamo
 
 ### KNN
 ```{r}
-
-train.X <- data.matrix(cleandfcorr[,3:47])
-
-knn.pred <- knn(train.X, train.X, cleandfcorr$ViolentCrimesFactor, k=3)
-table(knn.pred,cleandfcorr$ViolentCrimesFactor)
-(161+97)/1996
-
-mean(knn.pred==cleandfcorr$ViolentCrimesFactor)
-```
-va meglio.. 
-
-```{r}
 #train and test
-train.X <- data.matrix(cleandfcorr[train,3:47])
-test.X <- data.matrix(cleandfcorr[-train,3:47])
+train.X <- data.matrix(corrdf[train,-46])
+test.X <- data.matrix(corrdf[-train,-46])
 
 # train error
-knn.pred <- knn(train.X, train.X, cleandfcorr$ViolentCrimesFactor[train], k=5)
-table(knn.pred,cleandfcorr$ViolentCrimesFactor[train])
-mean(knn.pred==cleandfcorr$ViolentCrimesFactor[train])
+knn.pred <- knn(train.X, train.X, corrdf$ViolentCrimesPerPop[train], k=5)
+table(knn.pred,corrdf$ViolentCrimesPerPop[train])
+mean(knn.pred==corrdf$ViolentCrimesPerPop[train])
 
 # test error
-knn.pred <- knn(train.X, test.X, cleandfcorr$ViolentCrimesFactor[train], k=5)
-table(knn.pred,cleandfcorr$ViolentCrimesFactor[-train])
-mean(knn.pred==cleandfcorr$ViolentCrimesFactor[-train])
+knn.pred <- knn(train.X, test.X, corrdf$ViolentCrimesPerPop[train], k=5)
+table(knn.pred,corrdf$ViolentCrimesPerPop[-train])
+mean(knn.pred==corrdf$ViolentCrimesPerPop[-train])
 ```
 
-## Regularized models
 
 
 # Conclusions - Comparing results
@@ -1253,23 +998,10 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
 - An Introduction to Statistical Learning
 - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
+- https://online.stat.psu.edu/stat462/node/171/
+- http://www.disastercenter.com/crime/uscrime.htm
 
-#eventually useful stuff
 
-* raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
-* numbUrban or pctUrban keep only one (maybe the second, so that we can eventually discard population)
-  same for  NumUnderPov & PctPopUnderPov
-            NumKidsBornNeverMar & PctKidsBornNeverMar (total missing)
-            HousVacant & PctHousOccup & PctHousOwnOccup
-            OwnOccLowQuart & OwnOccMedVal & OwnOccHiQuart & OwnOccQrange
-            RentQrange (difference between 2 prev cols)
-            Lemas(...) ALREADY REMOVED in cleandf
-            PopDens (again, delete pop or similar)
-            
-            ?Target? & ?Target?PerPoP
-* medIncome and medfamincome so similar
-* PctImmigRec(...): compress in fewer columns with the coefficients describing the evolution ??? (obviously increasing (inclusion): 
-at what rate?)
-  same for PctBornSameState & PctSame(...)
-* PctRec(...): same but over the full population
+
+
 
