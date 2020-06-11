@@ -68,6 +68,26 @@ rem7 <- c(rem8,16,31,32,63,70,71,96)
 cleandf <- cleandf[-(rem7+2)] # execute just once!
 standf <- standf[-(rem7+2)] # execute just once!
 normdf <- normdf[-(rem7+2)] # execute just once!
+
+
+rem9 <- c( 
+"population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",        "NumUnderPov","PctLess9thGrade","PctOccupMgmtProf","MalePctDivorce","FemalePctDiv","PctFam2Par",       
+"PctKids2Par" ,"NumKidsBornNeverMar", "PctImmigRec5","PctImmigRec10",      
+"PctRecImmig5","PctRecImmig8","PctRecImmig10","PctSpeakEnglOnly" ,  
+"PctLargHouseOccup","PersPerOccupHous","PctHousOwnOcc","OwnOccLowQuart",     
+"OwnOccHiQuart","RentLowQ","RentHighQ","MedRent",            
+"NumInShelters","NumStreet","PctForeignBorn")
+
+rem8 <- c(rem9,
+"householdsize","racePctWhite","agePct12t29","medIncome",
+"pctWWage","pctWPubAsst","PctPopUnderPov","PersPerFam",         
+"PctYoungKids2Par","PctWorkMom","PctKidsBornNeverMar", "PctImmigRec8",       
+"PctNotSpeakEnglWell", "PctPersDenseHous","OwnOccMedVal","RentMedian",         
+"PctSameCity85")
+
+rem7 <- c(rem8,
+"pctWInvInc","PctNotHSGrad","PctBSorMore","PctLargHouseFam","PctHousLess3BR", 
+"MedNumBR","PctSameState85" )
 ```
 
 ##Out
@@ -212,7 +232,6 @@ y.pred <- predict(reg.out2, newdata=Xy_test)
 MSE <- mean((log(Xy_test$ViolentCrimesPerPop+1)-y.pred)^2)
 MSE
 ```
-
 
 
 
