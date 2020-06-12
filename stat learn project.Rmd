@@ -33,6 +33,7 @@ library(corrplot)
 # install.packages('factoextra')
 library(factoextra)
 
+library(glmnet)
 
 set.seed(1)
 ```
@@ -193,8 +194,7 @@ rm(list=setdiff(ls(), c("cleandf", "crimedata")))
 
 # Standardization
 
-```{r}
-# Standardization using an home made function 
+```{r} 
 standardization <- function(x) {
 return ((x - mean(x)) / sd(x))
 }
@@ -421,8 +421,8 @@ The plots of residuals versus fitted values shows a little pattern, however it s
 the data. (e ci dice che gli errori sono non correlati :))
 
 ### Homoschedasticity
-The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible solution
-is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
+The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
+solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
 ```{r}
 reg.out2 <- lm(log(ViolentCrimesPerPop+1)~., data=df)
@@ -455,10 +455,11 @@ We assess normality looking to the QQplot....
 ### Outliers
 The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider
 the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
-by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in absolute
-value are possible outliers.
+by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in
+absolute value are possible outliers.
 
-Note: Why 3? The Studentized Residuals are approximated by a N(0,1). The probability to observe a value greater than 3 is 0.001349898. [ref biblio?]
+Note: Why 3? The Studentized Residuals are approximated by a N(0,1).
+The probability to observe a value greater than 3 is 0.001349898. [ref biblio?]
 
 ```{r}
 1 - pnorm(3)
@@ -543,8 +544,10 @@ plot(reg.out4)
 par(mfrow=c(1,1))
 ```
 
-Con questo cut non sembra esserci molta differenza... ma RSE diminuisce di qualche millesimo.. e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
-a high leverage observation may or may not actually be influential, a data point has large influence only if it affects the estimated regression function.. potrebbe essere una buona notizia :)
+Con questo cut non sembra esserci molta differenza... ma RSE diminuisce di qualche millesimo.. 
+e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
+a high leverage observation may or may not actually be influential, a data point has large influence only if it affects the estimated
+regression function.. potrebbe essere una buona notizia :)
 
 Facendo un cut maggiore usando 2*.. l'errore riaumenta
 
@@ -570,7 +573,7 @@ collinearity problems while fitting the model.
 A simple way to detect collinearity is to look at the correlation matrix
 of the predictors.
 
-####Correlation insight
+#### Correlation insight
 
 In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most
 correlated ones, the more redundant and meaningless.
@@ -607,7 +610,8 @@ par(mfrow=c(1,1))
 # columns with correlation with more meaningful ones higher than threshold in absolute value
 
 rem9 <- c( 
-"population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",        "NumUnderPov","PctLess9thGrade","PctOccupMgmtProf","MalePctDivorce","FemalePctDiv","PctFam2Par",       
+"population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",
+"NumUnderPov","PctLess9thGrade","PctOccupMgmtProf","MalePctDivorce","FemalePctDiv","PctFam2Par",
 "PctKids2Par" ,"NumKidsBornNeverMar", "PctImmigRec5","PctImmigRec10",      
 "PctRecImmig5","PctRecImmig8","PctRecImmig10","PctSpeakEnglOnly" ,  
 "PctLargHouseOccup","PersPerOccupHous","PctHousOwnOcc","OwnOccLowQuart",     
@@ -661,7 +665,9 @@ par(mfrow=c(1,1))
 
 
 
-When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression
+When faced with the problem of collinearity, there are two simple solutions.
+The first is to drop one of the problematic variables from the regression. 
+This can usually be done without much compromise to the regression
 fit, since the presence of collinearity implies that the information that this
 variable provides about the response is redundant in the presence of the
 other variables. The second solution is
@@ -695,14 +701,14 @@ par(mfrow=c(1,1))
 rm(list=setdiff(ls(), c("cleandf", "crimedata","standf","df","corrdf")))
 ```
 
-# Split in Train and Test / validation Folds
-
-```{r}
-#train <- sample(rownames(cleandf), 1600) # leave as strings to select original indexes
-train <- sample(1:1996, 1600) #piu comodo per ora
-```
 
 # Variables selection
+
+```{r}
+# Train-Test samples
+train.sample <- as.numeric(sample(rownames(corrdf), 0.8*dim(corrdf)[1]))
+test.sample <- as.numeric(setdiff(rownames(corrdf), train.sample))
+```
 
 ## Principal Component Analysis
 
@@ -797,15 +803,129 @@ plot(reg.pc2)
 par(mfrow=c(1,1))
 ```
 
-
 ## Backward / Forward elimination
 
 MSE, adj R2...check also the p val, confounding..
 vedi slides 454 - 484 rovers
 
-## Cross Valitation
 
-## Lasso / Ridge Regularized models
+# Shrinkage methods
+
+```{r}
+# Convert dataframe to matrix
+X <- as.matrix(subset(corrdf, select = - c(ViolentCrimesPerPop)))
+Y <- as.matrix(subset(corrdf, select =  c(ViolentCrimesPerPop)))
+Y <- log(Y+1)
+
+# Train-Test split
+X.train <- subset(X, (row.names(X) %in% train.sample))
+X.test <- subset(X, (row.names(X) %in% test.sample))
+
+Y.train <- subset(Y, (row.names(Y) %in% train.sample))
+Y.test <- subset(Y, (row.names(Y) %in% test.sample))
+```
+
+## Ridge Regression with Cross-Validation
+```{r}
+# Lambda values to try
+lambda.val <- 10^seq(3, -3, length=100)
+
+# Ridge-Regression with 10-fold cross-validation on training set to choose lambda
+ridge.mod.cv <- cv.glmnet(X.train, Y.train, alpha=0,
+                          lambda=lambda.val, nfolds = 10)
+plot(ridge.mod.cv)
+```
+
+```{r}
+# Best cross-validated lambda
+lam.min <- ridge.mod.cv$lambda.min
+lam.1se <- ridge.mod.cv$lambda.1se
+```
+
+```{r}
+# Ridge-Regression on the entire train set
+ridge.mod <- glmnet(X.train, Y.train , alpha=0, lambda=lambda.val)
+plot(ridge.mod, xvar = "lambda")
+abline(v=log(lam.min), lty=2, col=1)
+abline(v=log(lam.1se), lty=2, col=2)
+legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
+```
+
+```{r}
+# Prediction on test set
+Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
+
+rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+
+mse <- mean(rss)
+```
+
+```{r}
+cat("MSE: ", round(mse,2), "\n")
+cat("R^2: ", round(r2,2), "\n")
+```
+
+```{r}
+# Most relevant predictors
+ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
+ridge.coef <- as.data.frame(ridge.coef)
+colnames(ridge.coef) <- c("Coefficients")
+subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
+```
+
+## Lasso Regression with Cross-Validation
+```{r}
+# Lambda values to try
+lambda.val <- 10^seq(3, -3, length=100)
+
+# Lasso-Regression with 10-fold cross-validation on training set to choose lambda
+lasso.mod.cv <- cv.glmnet(X.train, Y.train, alpha=1,
+                          lambda=lambda.val, nfolds = 10)
+plot(lasso.mod.cv)
+```
+
+```{r}
+# Best cross-validated lambda
+lam.min <- lasso.mod.cv$lambda.min
+lam.1se <- lasso.mod.cv$lambda.1se
+```
+
+```{r}
+# Ridge-Regression on the entire train set
+lasso.mod <- glmnet(X.train, Y.train , alpha=1, lambda=lambda.val)
+plot(lasso.mod, xvar = "lambda")
+abline(v=log(lam.min), lty=2, col=1)
+abline(v=log(lam.1se), lty=2, col=2)
+legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
+```
+
+```{r}
+# Prediction on test set
+Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
+
+rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+
+mse <- mean(rss)
+```
+
+```{r}
+cat("MSE: ", round(mse,2), "\n")
+cat("R^2: ", round(r2,2), "\n")
+```
+
+```{r}
+# Most relevant predictors
+lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
+lasso.coef <- as.data.frame(lasso.coef)
+colnames(lasso.coef) <- c("Coefficients")
+subset.data.frame(lasso.coef, abs(Coefficients)>0)
+```
 
 
 # Other possible predictive Models
@@ -973,6 +1093,13 @@ risultati strani splittando
 LDA QDA non li usiamo
 
 ### KNN
+
+```{r}
+# Split in Train and Test / validation Folds
+#train <- sample(rownames(cleandf), 1600) # leave as strings to select original indexes
+train <- sample(1:1996, 1600) #piu comodo per ora
+```
+
 ```{r}
 #train and test
 train.X <- data.matrix(corrdf[train,-46])
@@ -990,7 +1117,6 @@ mean(knn.pred==corrdf$ViolentCrimesPerPop[-train])
 ```
 
 
-
 # Conclusions - Comparing results
 Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
@@ -1000,8 +1126,4 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
 - https://online.stat.psu.edu/stat462/node/171/
 - http://www.disastercenter.com/crime/uscrime.htm
-
-
-
-
 
