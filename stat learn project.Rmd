@@ -33,7 +33,15 @@ library(corrplot)
 # install.packages('factoextra')
 library(factoextra)
 
+# install.packages("ISLR")
+library(ISLR)
+
+# install.packages("pls")
+library(pls)
+
 library(glmnet)
+
+
 
 set.seed(1)
 ```
@@ -372,7 +380,7 @@ par(mfrow=c(1,1))
 
 ```{r , include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf", "crimedata","standf")))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf")))
 ```
 
 
@@ -459,7 +467,7 @@ by dividing each residual $e_i$ by its estimated standard error. Observations wh
 absolute value are possible outliers.
 
 Note: Why 3? The Studentized Residuals are approximated by a N(0,1).
-The probability to observe a value greater than 3 is 0.001349898. [ref biblio?]
+The probability to observe a value greater than 3 is 0.001349898. [ref biblio? Per me sì (Alfredo)]
 
 ```{r}
 1 - pnorm(3)
@@ -501,7 +509,7 @@ par(mfrow=c(1,1))
 
 The RSE is 0.56 when the outlier is included in the regression and it is 0.52 when the outlier is removed. Since the RSE is used to
 compute all confidence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
-outliers the $R^2$ increses from 0.67 to 0.7.
+outliers the $R^2$ increses from 0.67 to 0.7. [??? A me vengono 0.68 e 0.71, da ricontrollare alla fine]
 Care should be taken in the decision of taking or dropping outliers.
 
 ### High Leverage Points
@@ -586,7 +594,7 @@ corrdf <- cleandf[,-coltodrop]
 # correlation matrix
 cm <- cor(corrdf, use='complete.obs')
 
-par(mfrow=c(1,2)) 
+par(mfrow=c(1,2))
 
 # correlation matrix plot
 corrplot(cm,title='Initial correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
@@ -674,8 +682,6 @@ other variables. The second solution is
 to combine the collinear variables together into a single predictor.
 
 
-
-qui da provare il modello con le colonne tolte dalle analisi sulle collinearity??
 ```{r}
 corrdf <- df[,!(colnames(df) %in% rem7)]
 
@@ -695,10 +701,12 @@ par(mfrow=c(2,2))
 plot(reg.out5)
 par(mfrow=c(1,1))
 ```
+It is possible to notice that the model performs slightly worse than the previous one, both looking at the RSE and the adjusted $R^2$ but the dimensionality of the problem has been reduced of the 55%, and we still have other trump cards to improve it's effectiveness.
+
 
 ```{r, include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf", "crimedata","standf","df","corrdf")))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf","df","corrdf")))
 ```
 
 
@@ -714,7 +722,8 @@ test.sample <- as.numeric(setdiff(rownames(corrdf), train.sample))
 
 ```{r}
 # PCA computation
-pc <- princomp(corrdf[,-dim(corrdf)[2]], cor=TRUE) # cor=TRUE to obtain it from the correlation matrix (use it for the unnormalized dataframe)
+X = subset(corrdf, select = - c(ViolentCrimesPerPop))
+pc <- princomp(X) # cor=TRUE to obtain it from the correlation matrix
 
 #str(pc)
 # first k principal components
@@ -735,10 +744,11 @@ barplot(pc$loadings[,10], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 
 par(mfrow=c(1,1))
 
 #influent features per component 1 e 2
-infl1 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,1])>0.15]
+infl1 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,1])>0.25]
 infl1
-infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.15]
+infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.25]
 infl2
+
 
 fviz_pca_var(pc,
              col.var = "contrib", # Color by contributions to the PC
@@ -747,9 +757,52 @@ fviz_pca_var(pc,
              select.var = list(contrib = 15)
              )
 ```
+Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor.
 
 
-PC regression
+###PC regression (??? prima c.v., poi modello migliore?)
+
+```{r}
+# Train-Test split
+X.train <- subset(X, (row.names(X) %in% train.sample))
+X.test <- subset(X, (row.names(X) %in% test.sample))
+
+Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
+
+Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
+Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
+```
+
+```{r}
+set.seed(1)
+pcr.fit = pcr(Y.train~., data=X.train, validation = "CV") # k=10 by default
+summary(pcr.fit)
+
+# plot of CV error
+validationplot(pcr.fit, val.type = "MSEP")
+validationplot(pcr.fit, val.type = "R2")
+# looking at the plot, 12 could be a great choice
+ 
+# prediction in the model below
+#pcr.pred = predict(pcr.fit, X.test, ncomp=11)
+```
+
+A great tradeoff is to train a model using the first 12 principal components.
+```{r}
+reg.pc.best <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:12]))
+
+se  <- summary(reg.pc1)$sigma                  # se
+rsq <- summary(reg.pc1)$r.squared              # R^2
+adrsq <- summary(reg.pc1)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc1)
+par(mfrow=c(1,1))
+```
 
 ```{r}
 reg.pc <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores))
@@ -795,7 +848,6 @@ adrsq <- summary(reg.pc2)$adj.r.squared        # adj R^2
 cat("RSE:", round(se,2), "\n")
 cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
-
 ```
 ```{r}
 par(mfrow=c(2,2))
@@ -811,18 +863,13 @@ vedi slides 454 - 484 rovers
 
 # Shrinkage methods
 
+??? ho definito X, Y e i relativi train e test in precedenza per la PCA come aveva fatto Nat, ma non come matrici (sotto non ho convertito in matrici X e Y perché non si usano in seguito)
 ```{r}
-# Convert dataframe to matrix
-X <- as.matrix(subset(corrdf, select = - c(ViolentCrimesPerPop)))
-Y <- as.matrix(subset(corrdf, select =  c(ViolentCrimesPerPop)))
-Y <- log(Y+1)
-
-# Train-Test split
-X.train <- subset(X, (row.names(X) %in% train.sample))
-X.test <- subset(X, (row.names(X) %in% test.sample))
-
-Y.train <- subset(Y, (row.names(Y) %in% train.sample))
-Y.test <- subset(Y, (row.names(Y) %in% test.sample))
+# Convert dataframes to matrixes
+X.train <- as.matrix(X.train)
+X.test <- as.matrix(X.test)
+Y,train <- as.matrix(Y.train)
+Y.test <- as.matrix(T.test)
 ```
 
 ## Ridge Regression with Cross-Validation
