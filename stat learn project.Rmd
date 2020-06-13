@@ -857,6 +857,26 @@ par(mfrow=c(1,1))
 
 ## Backward / Forward elimination
 
+??? Colonna None?
+```{r}
+full.mod <- lm(Y.train~., data=X.train)
+
+# trace=0
+step.mod <- step(full.mod, steps=20,  trace=0, direction="backward")
+summary(step.mod)
+# trace=1
+step.mod <- step(full.mod, steps=10,  trace=1, direction="backward")
+```
+
+```{r}
+full <- full.mod
+empty <- lm(Y.train~1, data=X.train, family=binomial)
+
+step.mod <- step(empty, steps=30, trace=0, scope=list(lower=formula(empty), upper=formula(full)), direction="forward")
+
+summary(step.mod)
+```
+
 MSE, adj R2...check also the p val, confounding..
 vedi slides 454 - 484 rovers
 
