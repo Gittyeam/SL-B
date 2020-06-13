@@ -868,8 +868,8 @@ vedi slides 454 - 484 rovers
 # Convert dataframes to matrixes
 X.train <- as.matrix(X.train)
 X.test <- as.matrix(X.test)
-Y,train <- as.matrix(Y.train)
-Y.test <- as.matrix(T.test)
+Y.train <- as.matrix(Y.train)
+Y.test <- as.matrix(Y.test)
 ```
 
 ## Ridge Regression with Cross-Validation
