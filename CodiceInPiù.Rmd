@@ -555,6 +555,139 @@ par(mfrow=c(1,1))
 ```
 
 
+
+```{r}
+reg.pc.best <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:12]))
+
+se  <- summary(reg.pc.best)$sigma                  # se
+rsq <- summary(reg.pc.best)$r.squared              # R^2
+adrsq <- summary(reg.pc.best)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc.best)
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+reg.pc <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores))
+#summary(reg.pc)
+
+se  <- summary(reg.pc)$sigma                  # se
+rsq <- summary(reg.pc)$r.squared              # R^2
+adrsq <- summary(reg.pc)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc)
+par(mfrow=c(1,1))
+```
+
+```{r}
+reg.pc1 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:15]))
+#summary(reg.pc)
+
+se  <- summary(reg.pc1)$sigma                  # se
+rsq <- summary(reg.pc1)$r.squared              # R^2
+adrsq <- summary(reg.pc1)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc1)
+par(mfrow=c(1,1))
+```
+
+```{r}
+reg.pc2 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:10]))
+#summary(reg.pc2)
+
+se  <- summary(reg.pc2)$sigma                  # se
+rsq <- summary(reg.pc2)$r.squared              # R^2
+adrsq <- summary(reg.pc2)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(reg.pc2)
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+lreg.out<-glm(df$ViolentCrimesPerPop~., family = binomial, data=as.data.frame(pc$scores[,-c(11,12,14,18,19,23,26,27,seq(30,45))]))
+
+summary(lreg.out)
+
+
+# check the coding of ViolentCrimesFactor
+contrasts(df$ViolentCrimesPerPop)
+
+logistic.prob <- predict(lreg.out, type="response") # want probability
+
+# ROC curve 
+
+# levels = controls (0's) as first element and  cases (1's) as second
+roc.out <- roc(df$ViolentCrimesPerPop, logistic.prob, levels=c("Low", "High"))
+
+auc(roc.out)
+
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+# threshold that maximises the sum of sensitivity and specificity
+coords(roc.out, "best")
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.67] <- "Low"
+
+table(logistic.pred, df$ViolentCrimesPerPop)
+
+#train error
+(113+224)/1996
+
+```
+
+```{r}
+lreg.out1<-glm(ViolentCrimesPerPop ~ ., family = binomial, data=corrdf)
+summary(lreg.out)
+
+logistic.prob <- predict(lreg.out1, type="response") # want probability
+
+# ROC curve 
+
+# levels = controls (0's) as first element and  cases (1's) as second
+roc.out <- roc(corrdf$ViolentCrimesPerPop , logistic.prob, levels=c("Low", "High"))
+
+auc(roc.out)
+
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+
+# threshold that maximises the sum of sensitivity and specificity
+coords(roc.out, "best")
+logistic.pred <- rep("High", 1996)
+logistic.pred[logistic.prob>0.71] <- "Low"
+
+table(logistic.pred, corrdf$ViolentCrimesPerPop)
+
+#train error
+(224+86)/1996
+
+#train acc
+mean(logistic.pred==corrdf$ViolentCrimesPerPop)
+
+```
+
+
 # Utili da tenere come esempi a voce nel caso chiedesse di più sulla features selection
 
 * raceP(p)ct(...) columns sum up to more than 1, one hot encoding???
