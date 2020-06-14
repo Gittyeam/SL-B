@@ -40,6 +40,9 @@ library(glmnet)
 
 library(leaps)
 
+# install.packages("caret", dependencies = T)
+library(caret)
+
 set.seed(1)
 ```
 
@@ -1174,6 +1177,81 @@ result[result[,4]<0.05,] #where reject equal mean hyphothesis?
 
 ```
 
+According to the Tukey test, the states can be grouped in two main cluster:
+
+```{r}
+cluster1 <- c("ND","ME","WI","NH","SD","UT","CT","ID","WY","PA","RI","OR","OH","IA","NJ","WV","MA","MO","OK","IN","VA","CO","WA","AZ","NV","AK","NY","TX","MS","KY","AR","TN","CA","NM","DE")
+cluster2 <- c("NC","GA","AL","FL","MD","SC","LA","DC")
+
+XS["Cluster"]=rep(1,1996)
+XS$Cluster[XS$state %in% cluster2] <- 2
+
+Col=c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
+
+plot_usmap(
+    data = XS[c("state","Cluster")], values = "Cluster",  color = "black") + 
+    scale_fill_gradient(low = Col[2], high =  Col[1]) + 
+  theme(legend.position = "none")+
+    labs(title = "2 clusters by ViolentCrimesPerPop Mean similarity")
+```
+
+
+```{r}
+XS = XS[,-46]
+XS$Cluster <- as.factor(XS$Cluster)
+
+is.factor(XS$Cluster) 
+
+XS.train <- subset(XS, (row.names(XS) %in% train.sample))
+XS.test <- subset(XS, (row.names(XS) %in% test.sample))
+
+
+regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical variable
+summary(regc.out)
+```
+
+now state cluster influential
+
+```{r}
+# prediction 
+pred = predict(regc.out, XS.test)
+
+n <- 400
+p <- 46
+
+rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
+ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+ANCOVA .. different regressions for the two group
+```{r}
+regc.out <- lm(Y.train~.*Cluster , data=XS.train) #add interaction and main effect due to Cluster
+summary(regc.out)
+```
+```{r}
+# prediction 
+pred = predict(regc.out, XS.test)
+
+n <- 400
+p <- 91
+
+rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
+ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
 
 ## Multivariate Linear Regression
 
@@ -1220,16 +1298,18 @@ pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... h
 
 
 ```{r}
-# thresholf is the mean (0 since standardized)
+
+#HLthreshold <- 0 # threshold is the mean (0 since standardized)
+HLthreshold <- median(standf$ViolentCrimesPerPop) # threshold is the median (balanced classes)
 
 YF.train <- Y.train
-YF.train[Y.train > 0] <- "High"
-YF.train[!Y.train > 0]<- "Low"
+YF.train[Y.train > HLthreshold] <- "High"
+YF.train[!Y.train > HLthreshold]<- "Low"
 YF.train <- as.factor(YF.train)
 
 YF.test <- Y.test
-YF.test[Y.test > 0] <- "High"
-YF.test[!Y.test > 0]<- "Low"
+YF.test[Y.test > HLthreshold] <- "High"
+YF.test[!Y.test > HLthreshold]<- "Low"
 YF.test <- as.factor(YF.test)
 
 ```
@@ -1257,89 +1337,52 @@ plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yla
 coords(roc.out, "best")
 
 logistic.pred <- rep("High", 1596)
-logistic.pred[logistic.prob>0.667] <- "Low"
+logistic.pred[logistic.prob>0.448] <- "Low"
 
-#train error
+#train accuracy
 table(logistic.pred,YF.train)
-1-mean(logistic.pred==YF.train)
+mean(logistic.pred==YF.train)
 
 ```
 
 ```{r}
-#test error
+#test accuracy
 logistic.prob <- predict(lreg.out, X.test, type="response") # want probability
 logistic.pred <- rep("High", 400)
-logistic.pred[logistic.prob>0.667] <- "Low"
+logistic.pred[logistic.prob>0.448] <- "Low"
 
 table(logistic.pred,YF.test)
-1-mean(logistic.pred==YF.test)
+mean(logistic.pred==YF.test)
 ```
 
 LDA QDA non li usiamo
 
 ### KNN
+
+Cross validation to choose best k
+
 ```{r}
-#Split in train, valid and test
+#10 fold cross validation
+XY.train=as.data.frame(cbind(X.train,YF.train))
+XY.train$YF.train<- as.factor(XY.train$YF.train)
+is.factor(XY.train$YF.train)
 
+trControl <- trainControl(method  = "cv",number  = 10)
 
-train.sample <- as.numeric(sample(rownames(corrdf), 0.7*dim(corrdf)[1]))
-nottrain <- setdiff(rownames(corrdf), train.sample)
-valid.sample <- as.numeric(sample(nottrain, 0.15*dim(corrdf)[1]))
-test.sample <- as.numeric(setdiff(nottrain, valid.sample))
+fit <- train(YF.train ~ .,
+             method     = "knn",
+             tuneGrid   = expand.grid(k = 1:10),
+             trControl  = trControl,
+             metric     = "Accuracy",
+             data       = XY.train)
 
-X = subset(corrdf, select = - c(ViolentCrimesPerPop))
-X.train <- subset(X, (row.names(X) %in% train.sample))
-X.valid <- subset(X, (row.names(X) %in% valid.sample))
-X.test <- subset(X, (row.names(X) %in% test.sample))
+fit
 
-Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
-
-Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
-Y.valid <- unlist(subset(Y, (row.names(Y) %in% valid.sample)))
-Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
-
-
-YF.train <- Y.train
-YF.train[Y.train > 0] <- "High"
-YF.train[!Y.train > 0]<- "Low"
-YF.train <- as.factor(YF.train)
-
-YF.valid <- Y.valid
-YF.valid[Y.valid > 0] <- "High"
-YF.valid[!Y.valid > 0]<- "Low"
-YF.valid <- as.factor(YF.valid)
-
-YF.test <- Y.test
-YF.test[Y.test > 0] <- "High"
-YF.test[!Y.test > 0]<- "Low"
-YF.test <- as.factor(YF.test)
-
-
-# Convert dataframes to matrixes
-X.train <- as.matrix(X.train)
-X.valid <- as.matrix(X.valid)
-X.test <- as.matrix(X.test)
-YF.train <- as.matrix(YF.train)
-YF.valid <- as.matrix(YF.valid)
-YF.test <- as.matrix(YF.test)
 ```
 
 ```{r}
-# validation error
-knnerr <- c()
-for (i in 1:7) {
-  knn.pred <- knn(X.train, X.valid, YF.train, k=i)
-  #table(knn.pred,YF.train)
-  knnerr[i] <- mean(knn.pred==YF.valid)
-  
-}
-
-knnerr
-```
-
-```{r}
-# test error
-knn.pred <- knn(X.train, X.test, YF.train, k=6)
+# test accuracy
+knn.pred <- knn(X.train, X.test, YF.train, k=10)
 table(knn.pred,YF.test)
 mean(knn.pred==YF.test)
 ```
@@ -1354,4 +1397,5 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
 - https://online.stat.psu.edu/stat462/node/171/
 - http://www.disastercenter.com/crime/uscrime.htm
+
 
