@@ -36,12 +36,9 @@ library(factoextra)
 # install.packages("ISLR")
 library(ISLR)
 
-# install.packages("pls")
-library(pls)
-
 library(glmnet)
 
-
+library(leaps)
 
 set.seed(1)
 ```
@@ -221,11 +218,6 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
         rgb(0.03, 0.23, 0.3, 0.7))
 ```
 
-```{r}
-boxplot(cleandf$ViolentCrimesPerPop~cleandf$state, col= Col)
-boxplot(standf$ViolentCrimesPerPop~standf$state, col= Col)
-boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, col= Col)
-```
 
 ```{r}
 # Violent Crimes per 100K Population - State aggregation - Mean
@@ -487,6 +479,7 @@ out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
 standf[out,c(1,2)]
 ```
 
+
 ```{r}
 # regression without outliers
 reg.out3 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% out),])
@@ -706,23 +699,223 @@ It is possible to notice that the model performs slightly worse than the previou
 
 ```{r, include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf","crimedata","standf","df","corrdf")))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf")))
 ```
 
 
 # Variables selection
 
+## Train - Test split
 ```{r}
 # Train-Test samples
 train.sample <- as.numeric(sample(rownames(corrdf), 0.8*dim(corrdf)[1]))
 test.sample <- as.numeric(setdiff(rownames(corrdf), train.sample))
 ```
 
+```{r}
+X = subset(corrdf, select = - c(ViolentCrimesPerPop))
+X.train <- subset(X, (row.names(X) %in% train.sample))
+X.test <- subset(X, (row.names(X) %in% test.sample))
+
+Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
+
+Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
+Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
+```
+
+## Full model
+
+```{r}
+full.mod <- lm(Y.train~., data=X.train)
+summary(full.mod)
+```
+
+```{r}
+# prediction 
+n <- 400
+p <- 45
+f.pred = predict(full.mod, X.test)
+rss <- sum((Y.test - f.pred)^2)           # Residual Sum of Squares
+ess <- sum((f.pred - mean(Y.test))^2)     # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+## Best subset selection
+
+```{r}
+regfit.full <- regsubsets(Y.train~., nvmax = 25, data= X.train)
+
+reg.summary <- summary(regfit.full)
+
+# first group of plots 
+#
+par(mfrow=c(2,2))
+
+# panel 1
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+
+# panel 2
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+mad<-which.max(reg.summary$adjr2)
+points(mad,reg.summary$adjr2[mad], col="red",cex=2,pch=20)
+
+# panel 3
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+mcp<-which.min(reg.summary$cp)
+points(mcp,reg.summary$cp[mcp],col="red",cex=2,pch=20)
+
+# panel 4
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+mb<-which.min(reg.summary$bic)
+points(mb,reg.summary$bic[mb],col="red",cex=2,pch=20)
+
+par(mfrow=c(1,1))
+
+# second group of plots 
+
+
+plot(regfit.full,scale="r2")
+plot(regfit.full,scale="adjr2")
+plot(regfit.full,scale="Cp")
+plot(regfit.full,scale="bic")
+
+```
+
+
+```{r}
+# predict with adjR2 best
+coef<-coef(regfit.full,mad) #coeff of the best model suggested by adjR2
+
+#best subsect of var
+as.data.frame(coef)
+
+advar<-names(coef)[-1]
+
+n <- 400
+p <- mad
+ad.pred=as.matrix(X.test[,advar])%*%coef[advar] + coef["(Intercept)"]
+rss <- sum((Y.test - ad.pred)^2)       # Residual Sum of Squares
+ess <- sum((ad.pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+```{r}
+# predict with Cp best
+coef<-coef(regfit.full,mcp) #coeff of the best model suggested by Cp 
+
+#best subsect of var
+as.data.frame(coef)
+
+cpvar<-names(coef)[-1]
+
+n <- 400
+p <- mcp
+
+cp.pred=as.matrix(X.test[,cpvar])%*%coef[cpvar] + coef["(Intercept)"]
+rss <- sum((Y.test - cp.pred)^2)       # Residual Sum of Squares
+ess <- sum((cp.pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+```{r}
+# predict with BIC best
+coef<-coef(regfit.full,mb) #coeff of the best model suggested by BIC 
+
+#best subsect of var
+as.data.frame(coef)
+
+bvar<-names(coef)[-1]
+
+n <- 400
+p <- mb
+
+b.pred=as.matrix(X.test[,bvar])%*%coef[bvar] + coef["(Intercept)"]
+rss <- sum((Y.test - b.pred)^2)       # Residual Sum of Squares
+ess <- sum((b.pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+best subset is limited when searching between large number of feautures (slow with 25 )... then use greedy approaches..
+
+## Greedy search algorithms
+
+### Backward selection
+
+```{r}
+step.mod <- step(full.mod, steps=20,  trace=0, direction="backward")
+summary(step.mod)
+```
+
+```{r}
+# prediction 
+n <- 400
+p <- 25
+bw.pred = predict(step.mod, X.test)
+rss <- sum((Y.test - bw.pred)^2)           # Residual Sum of Squares
+ess <- sum((bw.pred - mean(Y.test))^2)     # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+### Forward selection
+```{r}
+empty.mod <- lm(Y.train~1, data=X.train)
+
+step.mod <- step(empty.mod, steps=20,  trace=0, scope=list(lower=formula(empty.mod), upper=formula(full.mod)), direction="forward")
+summary(step.mod)
+```
+
+```{r}
+# prediction 
+n <- 400
+p <- 19
+fw.pred = predict(step.mod, X.test)
+rss <- sum((Y.test - fw.pred)^2)       # Residual Sum of Squares
+ess <- sum((fw.pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+
 ## Principal Component Analysis
+
 
 ```{r}
 # PCA computation
-X = subset(corrdf, select = - c(ViolentCrimesPerPop))
 pc <- princomp(X) # cor=TRUE to obtain it from the correlation matrix
 
 #str(pc)
@@ -760,130 +953,44 @@ fviz_pca_var(pc,
 Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor.
 
 
-###PC regression (??? prima c.v., poi modello migliore?)
+### PC regression
 
-```{r}
-# Train-Test split
-X.train <- subset(X, (row.names(X) %in% train.sample))
-X.test <- subset(X, (row.names(X) %in% test.sample))
-
-Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
-
-Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
-Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
+```{r, include=FALSE}
+# install.packages("pls")
+library(pls)
 ```
 
 ```{r}
-set.seed(1)
 pcr.fit = pcr(Y.train~., data=X.train, validation = "CV") # k=10 by default
-summary(pcr.fit)
+# summary(pcr.fit)
 
 # plot of CV error
 validationplot(pcr.fit, val.type = "MSEP")
 validationplot(pcr.fit, val.type = "R2")
 # looking at the plot, 12 could be a great choice
- 
-# prediction in the model below
-#pcr.pred = predict(pcr.fit, X.test, ncomp=11)
 ```
-
 A great tradeoff is to train a model using the first 12 principal components.
 ```{r}
-reg.pc.best <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:12]))
+# prediction in the model above
+n <- 400
+p <- 12
+pcr.pred = predict(pcr.fit, X.test, ncomp=12)
+rss <- sum((Y.test - pcr.pred)^2)          # Residual Sum of Squares
+ess <- sum((pcr.pred - mean(Y.test))^2)    # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-se  <- summary(reg.pc1)$sigma                  # se
-rsq <- summary(reg.pc1)$r.squared              # R^2
-adrsq <- summary(reg.pc1)$adj.r.squared        # adj R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2), "\n")
-cat("adjusted R^2:", round(adrsq,2))
-```
-```{r}
-par(mfrow=c(2,2))
-plot(reg.pc1)
-par(mfrow=c(1,1))
-```
-
-```{r}
-reg.pc <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores))
-#summary(reg.pc)
-
-se  <- summary(reg.pc)$sigma                  # se
-rsq <- summary(reg.pc)$r.squared              # R^2
-adrsq <- summary(reg.pc)$adj.r.squared        # adj R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2), "\n")
-cat("adjusted R^2:", round(adrsq,2))
-```
-```{r}
-par(mfrow=c(2,2))
-plot(reg.pc)
-par(mfrow=c(1,1))
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-```{r}
-reg.pc1 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:15]))
-#summary(reg.pc)
-
-se  <- summary(reg.pc1)$sigma                  # se
-rsq <- summary(reg.pc1)$r.squared              # R^2
-adrsq <- summary(reg.pc1)$adj.r.squared        # adj R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2), "\n")
-cat("adjusted R^2:", round(adrsq,2))
-```
-```{r}
-par(mfrow=c(2,2))
-plot(reg.pc1)
-par(mfrow=c(1,1))
-```
-
-```{r}
-reg.pc2 <- lm(log(standf$ViolentCrimesPerPop+1)~., data=as.data.frame(pc$scores[,1:10]))
-#summary(reg.pc2)
-
-se  <- summary(reg.pc2)$sigma                  # se
-rsq <- summary(reg.pc2)$r.squared              # R^2
-adrsq <- summary(reg.pc2)$adj.r.squared        # adj R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2), "\n")
-cat("adjusted R^2:", round(adrsq,2))
-```
-```{r}
-par(mfrow=c(2,2))
-plot(reg.pc2)
-par(mfrow=c(1,1))
-```
-
-## Backward / Forward elimination
-
-??? Colonna None?
-```{r}
-full.mod <- lm(Y.train~., data=X.train)
-
-# trace=0
-step.mod <- step(full.mod, steps=20,  trace=0, direction="backward")
-summary(step.mod)
-# trace=1
-step.mod <- step(full.mod, steps=10,  trace=1, direction="backward")
-```
-
-```{r}
-full <- full.mod
-empty <- lm(Y.train~1, data=X.train, family=binomial)
-
-step.mod <- step(empty, steps=30, trace=0, scope=list(lower=formula(empty), upper=formula(full)), direction="forward")
-
-summary(step.mod)
-```
-
-MSE, adj R2...check also the p val, confounding..
-vedi slides 454 - 484 rovers
 
 
-# Shrinkage methods
+## Shrinkage methods
 
-??? ho definito X, Y e i relativi train e test in precedenza per la PCA come aveva fatto Nat, ma non come matrici (sotto non ho convertito in matrici X e Y perché non si usano in seguito)
+??? ho definito X, Y e i relativi train e test in precedenza per la PCA come aveva fatto Nat, ma non come matrici (sotto non ho convertito in matrici X e Y perche non si usano in seguito)
 ```{r}
 # Convert dataframes to matrixes
 X.train <- as.matrix(X.train)
@@ -892,7 +999,7 @@ Y.train <- as.matrix(Y.train)
 Y.test <- as.matrix(Y.test)
 ```
 
-## Ridge Regression with Cross-Validation
+### Ridge Regression with Cross-Validation
 ```{r}
 # Lambda values to try
 lambda.val <- 10^seq(3, -3, length=100)
@@ -917,33 +1024,40 @@ abline(v=log(lam.min), lty=2, col=1)
 abline(v=log(lam.1se), lty=2, col=2)
 legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
 ```
+```{r}
+
+ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
+ridge.coef <- as.data.frame(ridge.coef)
+colnames(ridge.coef) <- c("Coefficients")
+
+# number of predictors
+sum(abs(ridge.coef$Coefficients)>10^(-16))-1 #remove intercept
+
+# Most relevant predictors
+subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
+```
 
 ```{r}
 # Prediction on test set
 Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
 
+n <- 400
+p <- 45
+
 rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
 ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- mean(rss)
-```
-
-```{r}
+mse <- rss/n                               #Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
-cat("R^2: ", round(r2,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-```{r}
-# Most relevant predictors
-ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
-ridge.coef <- as.data.frame(ridge.coef)
-colnames(ridge.coef) <- c("Coefficients")
-subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
-```
 
-## Lasso Regression with Cross-Validation
+
+### Lasso Regression with Cross-Validation
 ```{r}
 # Lambda values to try
 lambda.val <- 10^seq(3, -3, length=100)
@@ -970,59 +1084,94 @@ legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
 ```
 
 ```{r}
+lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
+lasso.coef <- as.data.frame(lasso.coef)
+colnames(lasso.coef) <- c("Coefficients")
+
+# number of predictors
+sum(abs(lasso.coef$Coefficients)>10^(-16))-1 #remove intercept
+
+# Most relevant predictors
+subset.data.frame(lasso.coef, abs(Coefficients)>0)
+```
+
+```{r}
 # Prediction on test set
 Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
+
+n <- 400
+p <- 30
 
 rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
 ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- mean(rss)
-```
-
-```{r}
+mse <- rss/n                               #Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
-cat("R^2: ", round(r2,2), "\n")
-```
-
-```{r}
-# Most relevant predictors
-lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
-lasso.coef <- as.data.frame(lasso.coef)
-colnames(lasso.coef) <- c("Coefficients")
-subset.data.frame(lasso.coef, abs(Coefficients)>0)
+cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 
 # Other possible predictive Models
 No Bayesian regression, non abbiamo possibili valori ipotesi iniziali ...
-No polinomial regr.. la cond di linearità è soddisfatta....
+No polinomial regr.. la cond di linearity soddisfatta....
 
 ## Add categorical predictor
+
+Till now we assumed that the response variable has equal mean/behaviour between the different states, a side by side is presented (using standardized and log transformed as in the previous model)
+```{r}
+boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C"))
+abline(h=mean(log(standf$ViolentCrimesPerPop+1)), col = "red")
+```
+
+
+
+```{r}
+XS = subset(corrdf, select = - c(ViolentCrimesPerPop))
+XS["state"]=standf$state
+
+is.factor(XS$state) 
+
+XS.train <- subset(XS, (row.names(XS) %in% train.sample))
+XS.test <- subset(XS, (row.names(XS) %in% test.sample))
+
+
+regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical variable
+summary(regc.out)
+```
 
 state seems not influential
 
 ```{r}
-is.factor(standf$state) 
-#contrasts(standf$state)
-corrdf["state"]=standf$state
-is.factor(corrdf$state) 
+# prediction 
+pred = predict(regc.out, XS.test)
 
-regc.out <- lm(log(ViolentCrimesPerPop + 1)~. , data=corrdf) #application of LR with a categorical variable
-summary(regc.out)
+n <- 400
+p <- 87
 
-se  <- summary(regc.out)$sigma                  # se
-rsq <- summary(regc.out)$r.squared              # R^2
-adrsq <- summary(regc.out)$adj.r.squared        # adj R^2
-cat("RSE:", round(se,2), "\n")
-cat("R^2:", round(rsq,2), "\n")
-cat("adjusted R^2:", round(adrsq,2))
+rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
+ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
 ```
+
 ```{r}
-par(mfrow=c(2,2))
-plot(regc.out)
-par(mfrow=c(1,1))
+summary(aov.state <- aov(ViolentCrimesPerPop ~ state, data = standf))
+#reject all equal mean hyphothesis?
+
+result<-TukeyHSD(aov.state, "state", ordered = TRUE)
+
+result<-as.data.frame(result$state)
+
+result[result[,4]<0.05,] #where reject equal mean hyphothesis?
+
 ```
 
 
@@ -1031,12 +1180,38 @@ par(mfrow=c(1,1))
 questo potrebbe essere interessante per predirre anche le altre colonne crimes.. come si valuta?
 per alcune response i risultati sono molto validi, magari mostriamo MSE..
 ```{r}
-#predict all the crime features... 
+#predict all the crime features per pop 
+X = subset(corrdf, select = - c(ViolentCrimesPerPop))
+X.train <- subset(X, (row.names(X) %in% train.sample))
+X.test <- subset(X, (row.names(X) %in% test.sample))
 
-mm <- lm(data.matrix(standf[,103:120]) ~., data=as.data.frame(pc$scores[,1:15]))
+
+Ys<-cbind(log(standf["murdPerPop"]+1), log(standf["rapesPerPop"]+2), log(standf["robbbPerPop"]+1), log(standf["assaultPerPop"]+1), log(standf["burglPerPop"]+2), log(standf["larcPerPop"]+2), log(standf["autoTheftPerPop"]+1), log(standf["arsonsPerPop"]+1), log(standf["ViolentCrimesPerPop"]+1), log(standf["nonViolPerPop"]+2))
+
+Ys.train<- as.matrix(subset(Ys, (row.names(Ys) %in% train.sample)))
+Ys.test<- as.matrix(subset(Ys, (row.names(Ys) %in% test.sample)))
+
+mm <- lm( Ys.train ~., data=X.train)
 #summary(mm) #long output
-
 ```
+
+```{r}
+# predictions 
+n <- 400
+p <- 45
+
+pred = predict(mm, X.test)
+rss <- colSums((as.data.frame(Ys.test) - as.data.frame(pred))^2)       # Residual Sum of Squares
+ess <- colSums((pred - mean(as.matrix(Ys.test)))^2) # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n
+
+as.data.frame(cbind(mse,adjr2))
+```
+
 
 
 
@@ -1047,35 +1222,32 @@ pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... h
 ```{r}
 # thresholf is the mean (0 since standardized)
 
-sum(df$ViolentCrimesPerPop>0)
-ViolentCrimesFactor <- rep("Low", 1996)
-ViolentCrimesFactor[df$ViolentCrimesPerPop>0] <- "High"
+YF.train <- Y.train
+YF.train[Y.train > 0] <- "High"
+YF.train[!Y.train > 0]<- "Low"
+YF.train <- as.factor(YF.train)
 
-df["ViolentCrimesPerPop"]<-as.factor(ViolentCrimesFactor)
-
-is.factor(df$ViolentCrimesPerPop)
-
-corrdf["ViolentCrimesPerPop"]<-as.factor(ViolentCrimesFactor)
+YF.test <- Y.test
+YF.test[Y.test > 0] <- "High"
+YF.test[!Y.test > 0]<- "Low"
+YF.test <- as.factor(YF.test)
 
 ```
 
 ### Logistic regression
 
 ```{r}
-lreg.out<-glm(df$ViolentCrimesPerPop~., family = binomial, data=as.data.frame(pc$scores))
-
-summary(lreg.out)
-
+lreg.out<-glm(YF.train~., family = binomial, data=X.train)
 
 # check the coding of ViolentCrimesFactor
-contrasts(df$ViolentCrimesPerPop)
+contrasts(YF.train)
 
 logistic.prob <- predict(lreg.out, type="response") # want probability
 
 # ROC curve 
 
 # levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(df$ViolentCrimesPerPop, logistic.prob, levels=c("Low", "High"))
+roc.out <- roc(YF.train, logistic.prob, levels=c("Low", "High"))
 
 auc(roc.out)
 
@@ -1083,104 +1255,93 @@ plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yla
 
 # threshold that maximises the sum of sensitivity and specificity
 coords(roc.out, "best")
-logistic.pred <- rep("High", 1996)
-logistic.pred[logistic.prob>0.61] <- "Low"
 
-table(logistic.pred, df$ViolentCrimesPerPop)
+logistic.pred <- rep("High", 1596)
+logistic.pred[logistic.prob>0.667] <- "Low"
 
 #train error
-(125+174)/1996
+table(logistic.pred,YF.train)
+1-mean(logistic.pred==YF.train)
 
 ```
 
 ```{r}
-lreg.out<-glm(df$ViolentCrimesPerPop~., family = binomial, data=as.data.frame(pc$scores[,-c(11,12,14,18,19,23,26,27,seq(30,45))]))
+#test error
+logistic.prob <- predict(lreg.out, X.test, type="response") # want probability
+logistic.pred <- rep("High", 400)
+logistic.pred[logistic.prob>0.667] <- "Low"
 
-summary(lreg.out)
-
-
-# check the coding of ViolentCrimesFactor
-contrasts(df$ViolentCrimesPerPop)
-
-logistic.prob <- predict(lreg.out, type="response") # want probability
-
-# ROC curve 
-
-# levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(df$ViolentCrimesPerPop, logistic.prob, levels=c("Low", "High"))
-
-auc(roc.out)
-
-plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
-
-# threshold that maximises the sum of sensitivity and specificity
-coords(roc.out, "best")
-logistic.pred <- rep("High", 1996)
-logistic.pred[logistic.prob>0.67] <- "Low"
-
-table(logistic.pred, df$ViolentCrimesPerPop)
-
-#train error
-(113+224)/1996
-
+table(logistic.pred,YF.test)
+1-mean(logistic.pred==YF.test)
 ```
-
-```{r}
-lreg.out1<-glm(ViolentCrimesPerPop ~ ., family = binomial, data=corrdf)
-summary(lreg.out)
-
-logistic.prob <- predict(lreg.out1, type="response") # want probability
-
-# ROC curve 
-
-# levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(corrdf$ViolentCrimesPerPop , logistic.prob, levels=c("Low", "High"))
-
-auc(roc.out)
-
-plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
-
-# threshold that maximises the sum of sensitivity and specificity
-coords(roc.out, "best")
-logistic.pred <- rep("High", 1996)
-logistic.pred[logistic.prob>0.71] <- "Low"
-
-table(logistic.pred, corrdf$ViolentCrimesPerPop)
-
-#train error
-(224+86)/1996
-
-#train acc
-mean(logistic.pred==corrdf$ViolentCrimesPerPop)
-
-```
-
-risultati strani splittando
 
 LDA QDA non li usiamo
 
 ### KNN
-
 ```{r}
-# Split in Train and Test / validation Folds
-#train <- sample(rownames(cleandf), 1600) # leave as strings to select original indexes
-train <- sample(1:1996, 1600) #piu comodo per ora
+#Split in train, valid and test
+
+
+train.sample <- as.numeric(sample(rownames(corrdf), 0.7*dim(corrdf)[1]))
+nottrain <- setdiff(rownames(corrdf), train.sample)
+valid.sample <- as.numeric(sample(nottrain, 0.15*dim(corrdf)[1]))
+test.sample <- as.numeric(setdiff(nottrain, valid.sample))
+
+X = subset(corrdf, select = - c(ViolentCrimesPerPop))
+X.train <- subset(X, (row.names(X) %in% train.sample))
+X.valid <- subset(X, (row.names(X) %in% valid.sample))
+X.test <- subset(X, (row.names(X) %in% test.sample))
+
+Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
+
+Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
+Y.valid <- unlist(subset(Y, (row.names(Y) %in% valid.sample)))
+Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
+
+
+YF.train <- Y.train
+YF.train[Y.train > 0] <- "High"
+YF.train[!Y.train > 0]<- "Low"
+YF.train <- as.factor(YF.train)
+
+YF.valid <- Y.valid
+YF.valid[Y.valid > 0] <- "High"
+YF.valid[!Y.valid > 0]<- "Low"
+YF.valid <- as.factor(YF.valid)
+
+YF.test <- Y.test
+YF.test[Y.test > 0] <- "High"
+YF.test[!Y.test > 0]<- "Low"
+YF.test <- as.factor(YF.test)
+
+
+# Convert dataframes to matrixes
+X.train <- as.matrix(X.train)
+X.valid <- as.matrix(X.valid)
+X.test <- as.matrix(X.test)
+YF.train <- as.matrix(YF.train)
+YF.valid <- as.matrix(YF.valid)
+YF.test <- as.matrix(YF.test)
 ```
 
 ```{r}
-#train and test
-train.X <- data.matrix(corrdf[train,-46])
-test.X <- data.matrix(corrdf[-train,-46])
+# validation error
+knnerr <- c()
+for (i in 1:7) {
+  knn.pred <- knn(X.train, X.valid, YF.train, k=i)
+  #table(knn.pred,YF.train)
+  knnerr[i] <- mean(knn.pred==YF.valid)
+  
+}
 
-# train error
-knn.pred <- knn(train.X, train.X, corrdf$ViolentCrimesPerPop[train], k=5)
-table(knn.pred,corrdf$ViolentCrimesPerPop[train])
-mean(knn.pred==corrdf$ViolentCrimesPerPop[train])
+knnerr
+```
 
+```{r}
 # test error
-knn.pred <- knn(train.X, test.X, corrdf$ViolentCrimesPerPop[train], k=5)
-table(knn.pred,corrdf$ViolentCrimesPerPop[-train])
-mean(knn.pred==corrdf$ViolentCrimesPerPop[-train])
+knn.pred <- knn(X.train, X.test, YF.train, k=6)
+table(knn.pred,YF.test)
+mean(knn.pred==YF.test)
 ```
 
 
