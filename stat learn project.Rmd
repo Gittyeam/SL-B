@@ -43,7 +43,7 @@ library(leaps)
 # install.packages("caret", dependencies = T)
 library(caret)
 
-set.seed(1)
+set.seed(1234)
 ```
 
 # Aim of the project
@@ -244,45 +244,6 @@ label=scales::comma)+
 
 
 ```{r}
-par(mfrow=c(1,2))
-hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
-lines(density(cleandf$ViolentCrimesPerPop))
-
-hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
-lines(density(log(cleandf$ViolentCrimesPerPop +1)))
-par(mfrow=c(1,1))
-
-
-par(mfrow=c(1,2))
-hist(standf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
-lines(density(standf$ViolentCrimesPerPop))
-
-hist(log(standf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
-lines(density(log(standf$ViolentCrimesPerPop +1)))
-par(mfrow=c(1,1))
-
-```
-
-```{r}
-par(mfrow=c(1,2))
-qqnorm(cleandf$ViolentCrimesPerPop, main="Violent Crimes")
-qqline(cleandf$ViolentCrimesPerPop)
-
-qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
-qqline(log(cleandf$ViolentCrimesPerPop +1))
-par(mfrow=c(1,1))
-
-par(mfrow=c(1,2))
-qqnorm(standf$ViolentCrimesPerPop, main="Violent Crimes")
-qqline(standf$ViolentCrimesPerPop)
-
-qqnorm(log(standf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
-qqline(log(standf$ViolentCrimesPerPop +1))
-par(mfrow=c(1,1))
-
-```
-
-```{r}
 violent_names <- c("murders", "rapes", "robberies", "assaults")
 violPerPop_names <- c("murdPerPop", "rapesPerPop", "robbbPerPop", "assaultPerPop")
 
@@ -320,42 +281,6 @@ label=scales::comma)+
 ```
 
 ```{r}
-par(mfrow=c(1,2))
-hist(cleandf$nonViolPerPop, prob=TRUE, breaks=30, col=Col[2], main="Non Violent Crimes")
-lines(density(cleandf$nonViolPerPop))
-
-hist(log(cleandf$nonViolPerPop+1), prob=TRUE, breaks=30, col=Col[2], main="log(Non Violent Crimes +1)")
-lines(density(log(cleandf$nonViolPerPop+1)))
-par(mfrow=c(1,1))
-
-par(mfrow=c(1,2))
-hist(standf$nonViolPerPop, prob=TRUE, breaks=30, col=Col[2], main="Non Violent Crimes")
-lines(density(standf$nonViolPerPop))
-
-hist(log(standf$nonViolPerPop+1), prob=TRUE, breaks=30, col=Col[2], main="log(Non Violent Crimes +2)")
-lines(density(log(standf$nonViolPerPop+2)))
-par(mfrow=c(1,1))
-```
-
-```{r}
-par(mfrow=c(1,2))
-qqnorm(cleandf$nonViolPerPop, main="Non Violent Crimes")
-qqline(cleandf$nonViolPerPop)
-
-qqnorm(log(cleandf$nonViolPerPop +1), main="log(Non Violent Crimes +1)")
-qqline(log(cleandf$nonViolPerPop +1))
-par(mfrow=c(1,1))
-
-par(mfrow=c(1,2))
-qqnorm(standf$nonViolPerPop, main="Non Violent Crimes")
-qqline(standf$nonViolPerPop)
-
-qqnorm(log(standf$nonViolPerPop +2), main="log(Non Violent Crimes +2)")
-qqline(log(standf$nonViolPerPop +2))
-par(mfrow=c(1,1))
-```
-
-```{r}
 nonViol_names <- c("burglaries", "larcenies", "autoTheft", "arsons")
 nonViolPerPop_names <- c("burglPerPop", "larcPerPop", "autoTheftPerPop", "arsonsPerPop")
 
@@ -373,9 +298,31 @@ boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)])
 par(mfrow=c(1,1))
 ```
 
+```{r}
+coltodrop <- c(1,2, seq(103,118))
+corrdf <- cleandf[,-coltodrop]
+
+# correlation matrix
+cm <- cor(corrdf, use='complete.obs')
+
+vcorr <- cm[,dim(cm)[2]]
+vnames <- names(vcorr[abs(vcorr)>0.5])
+
+```
+
+```{r}
+pairs(cleandf[,colnames(cleandf)%in% vnames], pch = 20)
+```
+
+- osservazioni sulle correlate con violcrimes, e tra loro, tre macro aree, confounding , vedi pag wiki per storia crimine brutta :( 
+- domande---
+
+-  scelta response violent  
+
+
 ```{r , include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf","crimedata","standf")))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf", "Col")))
 ```
 
 
@@ -427,6 +374,49 @@ the data. (e ci dice che gli errori sono non correlati :))
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
 solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
+
+
+
+```{r}
+par(mfrow=c(1,2))
+hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(cleandf$ViolentCrimesPerPop))
+
+hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(cleandf$ViolentCrimesPerPop +1)))
+par(mfrow=c(1,1))
+
+
+par(mfrow=c(1,2))
+hist(standf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(standf$ViolentCrimesPerPop))
+
+hist(log(standf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(standf$ViolentCrimesPerPop +1)))
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(cleandf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(cleandf$ViolentCrimesPerPop)
+
+qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(cleandf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+
+par(mfrow=c(1,2))
+qqnorm(standf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(standf$ViolentCrimesPerPop)
+
+qqnorm(log(standf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(standf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+
+```
+
+
 ```{r}
 reg.out2 <- lm(log(ViolentCrimesPerPop+1)~., data=df)
 ```
@@ -474,7 +464,7 @@ plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Stude
 abline(h=3, col = "red")
 abline(h=-3, col = "red")
 ```
-Explore and interpret city of outliers...?
+Explore and interpret city of outliers...? (dell'est strano.. commenta)
 
 ```{r}
 out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
@@ -553,7 +543,6 @@ e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
 a high leverage observation may or may not actually be influential, a data point has large influence only if it affects the estimated
 regression function.. potrebbe essere una buona notizia :)
 
-Facendo un cut maggiore usando 2*.. l'errore riaumenta
 
 
 
@@ -634,7 +623,7 @@ rem7 <- c(rem8,
 "MedNumBR","PctSameState85" )
 
 
-corrdf_ind <- corrdf[,!(colnames(corrdf) %in% rem7)]
+corrdf_ind <- corrdf[,!(colnames(corrdf) %in% rem8)]
 
 # final correlation matrix and filter
 cm_ind <- cor(corrdf_ind, use='complete.obs')
@@ -679,7 +668,7 @@ to combine the collinear variables together into a single predictor.
 
 
 ```{r}
-corrdf <- df[,!(colnames(df) %in% rem7)]
+corrdf <- df[,!(colnames(df) %in% rem8)]
 
 reg.out5 <- lm(log(ViolentCrimesPerPop+1)~., data=corrdf)
 #summary(reg.out5)
@@ -736,7 +725,7 @@ summary(full.mod)
 ```{r}
 # prediction 
 n <- 400
-p <- 45
+p <- 52
 f.pred = predict(full.mod, X.test)
 rss <- sum((Y.test - f.pred)^2)           # Residual Sum of Squares
 ess <- sum((f.pred - mean(Y.test))^2)     # Explained Sum of Squares
@@ -752,7 +741,7 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 ## Best subset selection
 
 ```{r}
-regfit.full <- regsubsets(Y.train~., nvmax = 25, data= X.train)
+regfit.full <- regsubsets(Y.train~., nvmax = 15, really.big=T, data= X.train)
 
 reg.summary <- summary(regfit.full)
 
@@ -876,7 +865,7 @@ summary(step.mod)
 ```{r}
 # prediction 
 n <- 400
-p <- 25
+p <- 32
 bw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - bw.pred)^2)           # Residual Sum of Squares
 ess <- sum((bw.pred - mean(Y.test))^2)     # Explained Sum of Squares
@@ -900,7 +889,7 @@ summary(step.mod)
 ```{r}
 # prediction 
 n <- 400
-p <- 19
+p <- 20
 fw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - fw.pred)^2)       # Residual Sum of Squares
 ess <- sum((fw.pred - mean(Y.test))^2) # Explained Sum of Squares
@@ -932,7 +921,7 @@ barplot(pc$loadings[,2], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 2
 barplot(pc$loadings[,3], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 3')
 barplot(pc$loadings[,4], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 4')
 barplot(pc$loadings[,5], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 5')
-barplot(pc$loadings[,6], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 6')
+barplot(pc$loadings[,6], cex.names=0.5,las=+2, col=  "#FC4E07", main='Component 6')
 barplot(pc$loadings[,7], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 7')
 barplot(pc$loadings[,8], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 8')
 barplot(pc$loadings[,9], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 9')
@@ -942,7 +931,7 @@ par(mfrow=c(1,1))
 #influent features per component 1 e 2
 infl1 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,1])>0.25]
 infl1
-infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.25]
+infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.2]
 infl2
 
 
@@ -976,8 +965,8 @@ A great tradeoff is to train a model using the first 12 principal components.
 ```{r}
 # prediction in the model above
 n <- 400
-p <- 12
-pcr.pred = predict(pcr.fit, X.test, ncomp=12)
+p <- 11
+pcr.pred = predict(pcr.fit, X.test, ncomp=11)
 rss <- sum((Y.test - pcr.pred)^2)          # Residual Sum of Squares
 ess <- sum((pcr.pred - mean(Y.test))^2)    # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
@@ -993,7 +982,6 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 
 ## Shrinkage methods
 
-??? ho definito X, Y e i relativi train e test in precedenza per la PCA come aveva fatto Nat, ma non come matrici (sotto non ho convertito in matrici X e Y perche non si usano in seguito)
 ```{r}
 # Convert dataframes to matrixes
 X.train <- as.matrix(X.train)
@@ -1045,7 +1033,7 @@ subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
 Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
 
 n <- 400
-p <- 45
+p <- 52
 
 rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
 ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
@@ -1103,7 +1091,7 @@ subset.data.frame(lasso.coef, abs(Coefficients)>0)
 Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
 
 n <- 400
-p <- 30
+p <- 38
 
 rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
 ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
@@ -1145,6 +1133,8 @@ regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical 
 summary(regc.out)
 ```
 
+ME and ND northern states (almost canada)
+
 state seems not influential
 
 ```{r}
@@ -1152,7 +1142,7 @@ state seems not influential
 pred = predict(regc.out, XS.test)
 
 n <- 400
-p <- 87
+p <- 94
 
 rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
 ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
@@ -1197,7 +1187,7 @@ plot_usmap(
 
 
 ```{r}
-XS = XS[,-46]
+XS = XS[,-53]
 XS$Cluster <- as.factor(XS$Cluster)
 
 is.factor(XS$Cluster) 
@@ -1217,7 +1207,7 @@ now state cluster influential
 pred = predict(regc.out, XS.test)
 
 n <- 400
-p <- 46
+p <- 53
 
 rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
 ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
@@ -1240,7 +1230,7 @@ summary(regc.out)
 pred = predict(regc.out, XS.test)
 
 n <- 400
-p <- 91
+p <- 105
 
 rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
 ess <- sum((pred - mean(Y.test))^2) # Explained Sum of Squares
@@ -1273,10 +1263,11 @@ mm <- lm( Ys.train ~., data=X.train)
 #summary(mm) #long output
 ```
 
+
 ```{r}
 # predictions 
 n <- 400
-p <- 45
+p <- 52
 
 pred = predict(mm, X.test)
 rss <- colSums((as.data.frame(Ys.test) - as.data.frame(pred))^2)       # Residual Sum of Squares
@@ -1337,7 +1328,7 @@ plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yla
 coords(roc.out, "best")
 
 logistic.pred <- rep("High", 1596)
-logistic.pred[logistic.prob>0.448] <- "Low"
+logistic.pred[logistic.prob>0.545] <- "Low"
 
 #train accuracy
 table(logistic.pred,YF.train)
@@ -1349,7 +1340,7 @@ mean(logistic.pred==YF.train)
 #test accuracy
 logistic.prob <- predict(lreg.out, X.test, type="response") # want probability
 logistic.pred <- rep("High", 400)
-logistic.pred[logistic.prob>0.448] <- "Low"
+logistic.pred[logistic.prob>0.545] <- "Low"
 
 table(logistic.pred,YF.test)
 mean(logistic.pred==YF.test)
@@ -1382,7 +1373,7 @@ fit
 
 ```{r}
 # test accuracy
-knn.pred <- knn(X.train, X.test, YF.train, k=10)
+knn.pred <- knn(X.train, X.test, YF.train, k=5)
 table(knn.pred,YF.test)
 mean(knn.pred==YF.test)
 ```
@@ -1397,5 +1388,7 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
 - https://online.stat.psu.edu/stat462/node/171/
 - http://www.disastercenter.com/crime/uscrime.htm
+
+
 
 
