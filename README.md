@@ -23,11 +23,11 @@ the 1995 FBI UCR.
 ### Attributes details
 (125 predictive, 4 non-predictive, 18 potential responses)
 
--- communityname: Community name - not predictive - for information only (string)
--- state: US state (by 2 letter postal abbreviation)(nominal)
--- countyCode: numeric code for county - not predictive, and many missing values (numeric)
--- communityCode: numeric code for community - not predictive and many missing values (numeric)
--- fold: fold number for non-random 10 fold cross validation, potentially useful for debugging, paired tests - not predictive 
+* communityname: Community name - not predictive - for information only (string)
+* state: US state (by 2 letter postal abbreviation)(nominal)
+* countyCode: numeric code for county - not predictive, and many missing values (numeric)
+* communityCode: numeric code for community - not predictive and many missing values (numeric)
+* fold: fold number for non-random 10 fold cross validation, potentially useful for debugging, paired tests - not predictive 
 (numeric - integer)
 
 #### Socio-economic data from 1990 US Census
