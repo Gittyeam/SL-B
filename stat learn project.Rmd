@@ -691,11 +691,18 @@ It is possible to notice that the model performs slightly worse than the previou
 
 ```{r, include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf")))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf","Col")))
 ```
 
 
 # Variables selection
+
+With the removal of highly correlated columns, the dataset has decreased from 100 to 52 numeric predictor features. Even if we almost halved the dimension, p, the number of variables is still large.
+As we will see, many of these variables are irrelevant and not associated with the response. Performing attribute selection is then a necessary step in order to find a good and representative subset of significative features, avoiding then to include useless information that makes our model unnecessarily complex.
+In this section different techniques for feature selection are presented and tested such as exhaustive and greedy searches, PCA and shrinkage methods.
+
+
+Before to go into the details, note that from now on the models are trained not on the full dataset but only on a fraction (80% of the rows). The remaining part is then used to estimate the test error. Results are given in terms of MSE (Mean Squared Error) and adjusted $R^2$ to ensure comparability between models built with different numbers of predictors.
 
 ## Train - Test split
 ```{r}
@@ -714,6 +721,8 @@ Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
 Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
 Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
 ```
+
+We firstly compute the test error on the full model in order to have beseline values. For "full" here we mean the linear regression model using all the standardized columns left from the correlation investigation which aims to predict the log-transformed variable ViolentCrimesPerPop.
 
 ## Full model
 
@@ -738,13 +747,23 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
+As expected, from the summary it can be noticed that many of the 52 predictors are not relevant for the prediction of the violent crimes rate, making us think that there exists a better subset of variables able to lower the MSE and increase the adjusted $R^2$.
+
 ## Best subset selection
+
+The first approach we tried is the Best Subset Selection method, an intuitively simple strategy which fits all possible models with at most k = 1, 2, ..., p attributes chosen between all the p available and then select the best according to different measures such as $C_p$, BIC and adjusted $R^2$.
+It is easy to understand that this exhaustive search has exponential time in p, making it not very efficient for our case. For this reason we performed the method fixing the maximum number of features to 15 instead of 52. Note that even with this big reduction the function is very slow ( 10 minutes running time). 
+
 
 ```{r}
 regfit.full <- regsubsets(Y.train~., nvmax = 15, really.big=T, data= X.train)
 
 reg.summary <- summary(regfit.full)
+```
 
+The plots of the evaluation measures $C_p$, BIC and adjusted $R^2$ in function of the number of variables are shown below with a red star in corrispondence of the optima.   
+
+```{r}
 # first group of plots 
 #
 par(mfrow=c(2,2))
@@ -768,18 +787,20 @@ mb<-which.min(reg.summary$bic)
 points(mb,reg.summary$bic[mb],col="red",cex=2,pch=20)
 
 par(mfrow=c(1,1))
+```
 
+In addition, graphical representations of the best subsect selected for each value of k $\in [1,15]$ are plotted. Note that the intensity of the colours on the gray scale corresponds to the level of significance.
+
+```{r}
 # second group of plots 
 
-
-plot(regfit.full,scale="r2")
 plot(regfit.full,scale="adjr2")
 plot(regfit.full,scale="Cp")
 plot(regfit.full,scale="bic")
 
 ```
 
-
+Finally, the best models selected according to $C_p$, BIC and adjusted $R^2$ the are then tested.
 ```{r}
 # predict with adjR2 best
 coef<-coef(regfit.full,mad) #coeff of the best model suggested by adjR2
@@ -851,21 +872,25 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-best subset is limited when searching between large number of feautures (slow with 25 )... then use greedy approaches..
+The results are very good considering that we reduced p from 52 to at most 15, with all the three choices this simplified models perfom better than the full both in terms of MSE and adjusted $R^2$.
 
 ## Greedy search algorithms
 
+The Best subset method is very time expensive when searching between large number of feautures as in our application, moreover only models with a small k can be investigated in feasible time. This limitations motivates us to abandone exact and exhaustive approaches and move to greedy searches like backward and forward selection.
+
 ### Backward selection
 
+Backward selection begins with the full least squares model containing all p predictors, and then iteratively removes the least useful predictor, one-at-a-time.
+
 ```{r}
-step.mod <- step(full.mod, steps=20,  trace=0, direction="backward")
+step.mod <- step(full.mod, steps=53,  trace=0, direction="backward")
 summary(step.mod)
 ```
 
 ```{r}
 # prediction 
 n <- 400
-p <- 32
+p <- 31
 bw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - bw.pred)^2)           # Residual Sum of Squares
 ess <- sum((bw.pred - mean(Y.test))^2)     # Explained Sum of Squares
@@ -879,17 +904,20 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 ### Forward selection
+
+Forward stepwise selection begins with the empty model containing no predictors, and then adds one-at-a-time the most significative predictor.
+
 ```{r}
 empty.mod <- lm(Y.train~1, data=X.train)
 
-step.mod <- step(empty.mod, steps=20,  trace=0, scope=list(lower=formula(empty.mod), upper=formula(full.mod)), direction="forward")
+step.mod <- step(empty.mod, steps=53,  trace=0, scope=list(lower=formula(empty.mod), upper=formula(full.mod)), direction="forward")
 summary(step.mod)
 ```
 
 ```{r}
 # prediction 
 n <- 400
-p <- 20
+p <- 27
 fw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - fw.pred)^2)       # Residual Sum of Squares
 ess <- sum((fw.pred - mean(Y.test))^2) # Explained Sum of Squares
@@ -901,6 +929,8 @@ mse <- rss/n                               #Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
+
+These greedy algorithms managed in few seconds to achieve quality solutions in terms of meaningfulness and reduction of the variables, MSE and adjusted $R^2$ scores. Note that the accuracy in MSE is equal to the one of super time expensive best subset methods, backward and forward strategy proved then to be very efficient in our quite large application.
 
 
 ## Principal Component Analysis
@@ -1091,7 +1121,7 @@ subset.data.frame(lasso.coef, abs(Coefficients)>0)
 Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
 
 n <- 400
-p <- 38
+p <- 48
 
 rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
 ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
@@ -1106,18 +1136,20 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 
 
 # Other possible predictive Models
-No Bayesian regression, non abbiamo possibili valori ipotesi iniziali ...
-No polinomial regr.. la cond di linearity soddisfatta....
+
+In this section other models have been tested for the prediction of the violent and non violent rate var variables.
 
 ## Add categorical predictor
 
-Till now we assumed that the response variable has equal mean/behaviour between the different states, a side by side is presented (using standardized and log transformed as in the previous model)
+Untill now we assumed that the response variable ViolentCrimesPerPop has equal mean and behaviour between the different states. Even if in practice this assumption considerably simplified the model, the hypothesis of similar distribution between different cities belonging to a vast territory such as the American one, characterized by a wide variety of geographic, cultural and social conditions, could be a too strong request.
+Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the  standardized and log transformed version of the data). The horizontal line draws the mean value between all data without distinction.
+
 ```{r}
-boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C"))
+boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= Col)
 abline(h=mean(log(standf$ViolentCrimesPerPop+1)), col = "red")
 ```
 
-
+The plot seems to confirm the doubts discussed above, therefore we tested the linear model considering the categorical variable State as factor.
 
 ```{r}
 XS = subset(corrdf, select = - c(ViolentCrimesPerPop))
@@ -1133,9 +1165,10 @@ regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical 
 summary(regc.out)
 ```
 
-ME and ND northern states (almost canada)
+From the results plotted by the summary, it seems that adding this information does not help too much the model, the State variable seem not very influential. The only exceptions are the Maine and North Dakota states (ME and ND) for which the information is more significant. Analyzing the position of these two territories it is interesting to note that they are both two northern states on the border with Canada, this precise geographical diversity could be the reason for our result.
 
-state seems not influential
+Testing the model, as expected the MSE is slightly better than the equivalent model withot the categorical information, otherwise, the adjusted $R^2$ is smaller.
+
 
 ```{r}
 # prediction 
@@ -1155,6 +1188,9 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
+Given the contradictory results between the boxplot and the model, we decided to conduct a deeper study by performing ANOVA, Tukey's test and ANCOVA on our dataset.
+As expected, the ANOVA gives a very small p-value, confirming the theory of not all equal means. At this point hence the Tukey method for all pairwise mean comparisons is applied.
+
 ```{r}
 summary(aov.state <- aov(ViolentCrimesPerPop ~ state, data = standf))
 #reject all equal mean hyphothesis?
@@ -1167,7 +1203,7 @@ result[result[,4]<0.05,] #where reject equal mean hyphothesis?
 
 ```
 
-According to the Tukey test, the states can be grouped in two main cluster:
+Examining all the pairs in which Tukey's test allows to reject the hypothesis, i.e. where the adjusted p-value is less than $\alpha=0.05$, it can be concluded that the states can be grouped in two main cluster. Also in this case it is interesting to observe how the statistical test result can be interpreted geographically, the two clusers exactly divide the USin two regions, making us hypothesize that the variable of interest may have influences related to social and cultural aspects related to the position.
 
 ```{r}
 cluster1 <- c("ND","ME","WI","NH","SD","UT","CT","ID","WY","PA","RI","OR","OH","IA","NJ","WV","MA","MO","OK","IN","VA","CO","WA","AZ","NV","AK","NY","TX","MS","KY","AR","TN","CA","NM","DE")
@@ -1176,15 +1212,13 @@ cluster2 <- c("NC","GA","AL","FL","MD","SC","LA","DC")
 XS["Cluster"]=rep(1,1996)
 XS$Cluster[XS$state %in% cluster2] <- 2
 
-Col=c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
-
-plot_usmap(
+plot_usmap(labels = T,
     data = XS[c("state","Cluster")], values = "Cluster",  color = "black") + 
     scale_fill_gradient(low = Col[2], high =  Col[1]) + 
   theme(legend.position = "none")+
     labs(title = "2 clusters by ViolentCrimesPerPop Mean similarity")
 ```
-
+The linear model considering a new categorical predictor, that factorize the cluster to which each state belongs, is then built. The cluster information is now significative, moreover the results on the test set show a decrease of the MSE and equal adjusted $R^2$ (compared to the equivalent model without categorical predictor).
 
 ```{r}
 XS = XS[,-53]
@@ -1200,7 +1234,6 @@ regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical 
 summary(regc.out)
 ```
 
-now state cluster influential
 
 ```{r}
 # prediction 
@@ -1220,11 +1253,14 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-ANCOVA .. different regressions for the two group
+Finally ANCOVA is performed, to asses if the two models differ between the two groups. The previous summary proves that the intercepts are different, now we want to test if also some of the slope coefficients vary between the two clusters.
+To this end the linear model exploiting also interaction effects between the Cluster variable and all the other is built.
+
 ```{r}
 regc.out <- lm(Y.train~.*Cluster , data=XS.train) #add interaction and main effect due to Cluster
 summary(regc.out)
 ```
+
 ```{r}
 # prediction 
 pred = predict(regc.out, XS.test)
@@ -1243,10 +1279,17 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-## Multivariate Linear Regression
+The summary shows that there are significative slope changes for coefficients like agePct12t21, blackPerCap, pctWFarmSelf, PctEmploy, MalePctNevMarr and MedRentPctHousInc. Note that many of these are right among the more influential predictors emerged from the feature selection section.
+However this more complex model does not perform better than others in terms of MSE, as a matter of fact the adjusted $R^2$ is considerably smaller.
 
-questo potrebbe essere interessante per predirre anche le altre colonne crimes.. come si valuta?
-per alcune response i risultati sono molto validi, magari mostriamo MSE..
+In conclusion, the contribution of the variable State, although it seems to have influences on the response, it does not seem to bring many improvements to the simplified model tested so far. Moreover not having considered it does not therefore seem to be problematic, making us believe that the model adopted is a good compromise between valid representation of data and simplicity.
+
+## Multiple Responses Linear Regression
+
+We conclude the experimentation of continuous regression models testing the contemporary prediction of all the crime rates related response variables: murdPerPop, rapesPerPop, robbbPerPop, assaultPerPop, burglPerPop, larcPerPop, autoTheftPerPop, arsonsPerPop, ViolentCrimesPerPop and nonViolPerPop (with reasonings similar to those made above, logarithmic transformation was used for each of them).
+Note that this variables are correlated between them, and hence it is reasonably  to expect that they depend on the same predictors, this is the main motivation to build such model, moreover training the regressor considering all of them could have benefit effect. 
+As a matter of fact, the MSE results on the test are good for almost all the responses.
+
 ```{r}
 #predict all the crime features per pop 
 X = subset(corrdf, select = - c(ViolentCrimesPerPop))
@@ -1283,10 +1326,12 @@ as.data.frame(cbind(mse,adjr2))
 
 
 
+## Binary classification models
 
-## Binary classification models 
-pensando di trasformare le ultime colonne in qualcosa del tipo 'HIGH'/'LOW'... ha senso? 
+The last section of our research is dedicated to binary classification. The capability of logistic regressor and KNN algorithm have been tested in the classification task among two level of ViolentCrimesPerPop: High and Low. 
+In particular, we set a threshold in order to distinguish if a community has high level of crimes per population. Different options were possible for the value of this threshold such as considering the mean among all the US provided in [see refer], the mean or the median of our entire dataset.  
 
+For convenience in this simplistic study, we decided to proceed using the median of ViolentCrimesPerPop, the main reasons of this choice are that, first of all, it is more representative than the mean since the distribution is skewed, secondly this value split the data in balanced classes.
 
 ```{r}
 
@@ -1307,6 +1352,7 @@ YF.test <- as.factor(YF.test)
 
 ### Logistic regression
 
+The logistic regression is built below.
 ```{r}
 lreg.out<-glm(YF.train~., family = binomial, data=X.train)
 
@@ -1314,11 +1360,14 @@ lreg.out<-glm(YF.train~., family = binomial, data=X.train)
 contrasts(YF.train)
 
 logistic.prob <- predict(lreg.out, type="response") # want probability
+```
 
+In order to select the best threshold for the probability, the ROC curve is plotted. The shape of the function and the AUC value confirm the acceptable quality of the model.
+```{r}
 # ROC curve 
 
 # levels = controls (0's) as first element and  cases (1's) as second
-roc.out <- roc(YF.train, logistic.prob, levels=c("Low", "High"))
+roc.out <- roc(YF.train, logistic.prob, levels=c("Low", "High"), transpose = TRUE)
 
 auc(roc.out)
 
@@ -1326,7 +1375,9 @@ plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", yla
 
 # threshold that maximises the sum of sensitivity and specificity
 coords(roc.out, "best")
+```
 
+```{r}
 logistic.pred <- rep("High", 1596)
 logistic.pred[logistic.prob>0.545] <- "Low"
 
@@ -1346,11 +1397,13 @@ table(logistic.pred,YF.test)
 mean(logistic.pred==YF.test)
 ```
 
-LDA QDA non li usiamo
+With this choice of the probability threshold, the model achieves good sensitivity and specificity and an accuracy on the test set of 85%.
 
 ### KNN
 
-Cross validation to choose best k
+Finally we improved a completely non-parametric and non-linear approach: KNN. In this method no assumptions are made about the shape of the decision boundary, moreover differently from LDA or QDA, normality condition of the predictors are not necessary.
+
+Strictly speaking, we first performed 10 folds cross validation to choose the best value for k, i.e. the number of closest training observations to consider to assign the majority class to a new point.
 
 ```{r}
 #10 fold cross validation
@@ -1371,6 +1424,9 @@ fit
 
 ```
 
+From the C.V., the best k is 5, then the model is performed with this value on the test set, returning an accuracy of 81.5%.
+Note that the performance is slightly poorer than the linear, confirming us the power of this simple and fully interpretable model even with a large dataset, with many possible correlated features, as the one under investigation.
+
 ```{r}
 # test accuracy
 knn.pred <- knn(X.train, X.test, YF.train, k=5)
@@ -1388,7 +1444,6 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
 - https://online.stat.psu.edu/stat462/node/171/
 - http://www.disastercenter.com/crime/uscrime.htm
-
 
 
 
