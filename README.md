@@ -31,7 +31,7 @@ the 1995 FBI UCR.
 (numeric - integer)
 
 #### Socio-economic data from 1990 US Census
-(Macro areas: race, age, employment, marital status, immigration data and home ownership)
+(Macro areas: race, age, employment, marital status, family structure, immigration data and home ownership)
 
 * population: population for community: (numeric - expected to be integer)
 * householdsize: mean people per household (numeric - decimal)
