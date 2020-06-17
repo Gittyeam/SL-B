@@ -201,7 +201,7 @@ for(col in nacolnames) {
 }
 ```
 
-Now cleandf doeas not contain NA.
+Now cleandf does not contain NA.
 
 ```{r}
 sum(is.na(cleandf))
