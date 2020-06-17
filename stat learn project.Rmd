@@ -217,6 +217,10 @@ deviation stardardization and the min-max normalization. In the latter case most
 mentioned thickness of the tails of the columns densities, while we'll see that the former one, together with a logarithmic
 transformation, gives far better results.
 
+It is interesting to notice an additional detail: many columns of the dataset describe the same quantity for different categories.
+An attempt has been to jointly standardize such groups of variables, considering common values for the mean and the standard deviation,
+but the following results where basically equivalent to the first ones, so we decided not to overcomplicate the analysis.
+
 ```{r} 
 standardization <- function(x) {
 return ((x - mean(x)) / sd(x))
