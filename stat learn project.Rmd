@@ -211,7 +211,11 @@ The resulting dataframe consists of 1996 instances and 120 attributes.
 
 ## Standardization
 
-??? Commenti sulla standardizzazione ???
+To avoid any bias due to the difference of the predictors content, the dataset must be somehow scaled.
+Different methods have been tested because of the presence of several outliers, such as the classical mean-standard
+deviation stardardization and the min-max normalization. In the latter case most of the information dropped lost for the previously
+mentioned thickness of the tails of the columns densities, while we'll see that the former one, together with a logarithmic
+transformation, gives far better results.
 
 ```{r} 
 standardization <- function(x) {
