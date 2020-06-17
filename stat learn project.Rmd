@@ -555,6 +555,61 @@ Explore and interpret city of outliers...? (dell'est strano.. commenta)
 out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
 
 standf[out,c(1,2)]
+
+cityout<-standf$communityname[rownames(standf) %in% out]
+```
+
+
+```{r}
+citycord <- read.csv("cities.csv")
+
+# Rename column 
+colnames(citycord)[colnames(citycord) == "city"] <- "communityname"
+colnames(citycord)[colnames(citycord) == "latitude"] <- "lat"
+colnames(citycord)[colnames(citycord) == "longitude"] <- "lon"
+
+
+citycord<-merge(citycord,cleandf,by=c("state","communityname"))
+```
+
+
+```{r}
+dfplot <- citycord[citycord$communityname %in% cityout, c("lon","lat","ViolentCrimesPerPop","communityname")]
+```
+
+
+```{r}
+
+cities_t <- usmap_transform(dfplot)
+
+#without city labels
+plot_usmap(fill = "#06D6A0", alpha = 0.25) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = ViolentCrimesPerPop),
+             color = "#073B4C", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Outliers communities",
+       size = "Violent Crimes per 100 K inhabitants") +
+  theme(legend.position = "right")
+
+#with city labels
+plot_usmap(fill = "#06D6A0", alpha = 0.25) +
+  ggrepel::geom_label_repel(data = cities_t,
+             aes(x = lon.1, y = lat.1, label = communityname),
+             size = 2.5, alpha = 0.8,
+             label.r = unit(0.5, "lines"), label.size = 0.55,
+             segment.color = "black", segment.size = 0.7,
+             seed = 1002) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = ViolentCrimesPerPop),
+             color = "#073B4C", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Outliers communities",
+       size = "Violent Crimes per 100 K inhabitants") +
+  theme(legend.position = "right")
+
 ```
 
 
@@ -603,6 +658,47 @@ explore city state leverage interpret?
 ```{r}
 lev <- names(hv[hv>3*(p+1)/n])
 standf[lev,c(1,2)]
+
+citylev<-standf$communityname[rownames(standf) %in% lev]
+```
+
+```{r}
+dfplot<-citycord[citycord$communityname %in% citylev,c("lon","lat","communityname","state","population")]
+```
+
+```{r}
+
+cities_t <- usmap_transform(dfplot)
+
+
+#without city labels
+plot_usmap(fill = "#f26b8b", alpha = 0.23) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = population),
+             color = "#a7314d", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Leverage communities",
+       size = "Total community population") +
+  theme(legend.position = "right")
+
+#with city labels
+plot_usmap(fill = "#f26b8b", alpha = 0.23) +
+  ggrepel::geom_label_repel(data = cities_t,
+             aes(x = lon.1, y = lat.1, label = communityname),
+             size = 2, alpha = 0.8,
+             label.r = unit(0.5, "lines"), label.size = 0.01,
+             segment.color = "black", segment.size = 0.5,
+             seed = 1002) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = population),
+             color = "#a7314d", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Leverage communities",
+       size = "Total community population") +
+  theme(legend.position = "right")
+
 ```
 
 ```{r}
