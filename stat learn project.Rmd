@@ -153,6 +153,7 @@ nacolnames
 ```
 
 Possible ways to handle the remaining missing values:
+
 1. drop all raws with at least one missing value;
 2. substitute a missing value with the average computed over the state a community belongs;
 3. leave NA value and consider it as another category.
