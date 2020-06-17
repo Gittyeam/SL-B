@@ -1,0 +1,204 @@
+---
+title: "Communities and Crime"
+subtitle: "Statistical Learning Final Exam Project"
+author: "Caria Natascia, Cozzolino Claudia, Petrella Alfredo"
+date: "17/6/2020"
+output:
+  pdf_document:
+    keep_tex: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# set working directory
+# setwd("C:/Users/Natascia/Desktop/DataS_2/Stat_B/Project/CommunitiesAndCrimes/SL-B-master")
+```
+
+# Aim of the project
+
+Predicting the rate of violent crime in a community can be particularly helpful in reducing the actual possibility of such crimes occurring.
+Socio-economic, environmental and demographic characteristics can be important predictors of the level of violent crime in a population.
+Therefore, determining which factors are the most influential can play a key role in understanding this complex phenomenon of crime.
+
+This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the UCI Dataset Repository.
+
+# Dataset Description
+
+The Dataset contains a total number of 2215 instances, each one associated to a community in the US, and 147 attributes which result from the combination of socio-economic data from 1990 US Census, law enforcement data from the 1990 US LEMAS survey and crimedata from the 1995 FBI UCR.
+
+# Data Cleaning
+
+```{r}
+# import dataset
+crimedata <- read.csv("crimedata.csv", na.strings="?") # missing values are stored as "?"
+dim(crimedata)
+```
+
+Attributes information:
+
+* 4 non-predictive (communityname, countyCode, communityCode, fold)
+* 125 predictive
+* 18 potential response (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries, burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
+
+From UCI description we know that the variables communityname and state are nominal while the remaining are all numeric.
+
+```{r}
+# check if variables communityname and state are stored as factors
+is.factor(crimedata$communityname)
+is.factor(crimedata$state)
+
+# check number of numeric variables: 145 (= 147 - 2) expected
+sum(sapply(crimedata, is.numeric))
+```
+
+
+# Missing values
+
+```{r}
+# inspect total NA
+sum(is.na(crimedata))
+mean(is.na(crimedata))
+```
+
+More than 10% of values is missing.
+
+```{r, include=FALSE}
+# install.packages("varhandle", dependencies = T)
+library(varhandle)
+```
+
+```{r}
+# dataframe with columns that present NA
+nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
+```
+
+There are 41 columns with missing values, many of them with more than 50% of the data missing.
+Among them:
+
+* 3 non-predictive (countyCode, communityCode, fold)
+* Many variables from US LEMAS dataset
+* Policing information
+* Potential response (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
+
+From documentaion:
+
+*The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).*
+*The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').*
+
+Looking to the dataset, other suspecious values equal to 0.00 have been found:
+
+```{r}
+zero_count <- function(x) sum(x==0, na.rm = TRUE)
+zerodf <- lapply(crimedata, zero_count)[lapply(crimedata, zero_count)!=0]
+names(zerodf)
+```
+
+Although it makes sense for some of these variables to take zero values, for others it seems unrealistic. However, we do not have any information about it in the documentation.
+
+Therefore, columns with more than 50% NA are dropped and so are the variables fold (not useful), OwnOccQrange and RentQrange (obtained as the difference of other columns). We decide to keep the other columns with zero values due to their meaningfulness.
+
+```{r}
+# find columns with > 50% NA
+coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
+
+# add other columns to remove
+coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
+coltodrop
+
+# drop columns with > 50% NA and clearly redundant ones
+cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
+```
+
+### Possible ways to handle missing values
+
+The remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per capita income for people with 'other' heritage), which has only one missing value.
+
+```{r}
+# remaining columns with NA
+nadf <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=FALSE, na.value = NA)
+nacolnames <- as.vector(nadf$column_name)
+nacolnames
+```
+
+Possible ways to handle the remaining missing values:
+1. drop all raws with at least one missing value;
+2. substitute a missing value with the average computed over the state a community belongs;
+3. leave NA value and consider it as another category.
+
+```{r}
+# rows with NA
+narows <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=TRUE, barplot=FALSE, na.value = NA)
+dim(narows)[1]
+```
+
+Since there are a lot of rows that have at least one missing values, we decide to proceed as in point 2.
+
+```{r}
+# dataframe of the columns which still contain NA with the mean computed over the state
+meandf <- aggregate(cleandf[,nacolnames], list(cleandf$state), function(x) mean(x, na.rm = TRUE))
+sum(is.na(meandf))
+```
+
+The dataframe with the mean contains NA values, this means that there are States for which the value of a certain feature is zero for all communities that belong to them.
+This happens for IL, MI (no data of rapes, rapesPerPop, ViolentCrimesPerPop), KS, VT (no data of arsons, arsonsPerPop, nonViolPerPop).
+Moreover from documentation we know that also MN has a lot of missing values for rapes (59 out of 66):
+
+```{r}
+mnNA = sum(is.na(cleandf[cleandf$state=="MN","rapes"]))
+mnTot = length(cleandf[cleandf$state=="MN","rapes"])
+round(c(mnNA, mnTot, mnNA/mnTot), 2)
+```
+
+Therefore, data related to those states is removed.
+
+```{r}
+rowtodrop <- as.numeric(rownames(cleandf[cleandf$state %in% c("IL","MI","MN","KS","VT"),]))
+cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
+```
+
+For the remaining variables with missing values, we substitute NA with the mean computed over the state.
+
+```{r}
+# Substitute a missing value with the average computed over the state
+for(col in nacolnames) {
+  match_table <- tapply(cleandf[[col]], cleandf$state, mean, na.rm=TRUE)
+  NA_position <- which(is.na(cleandf[[col]]))
+  cleandf[[col]][NA_position] <- match_table[cleandf$state[NA_position]]
+}
+```
+
+Now cleandf does not contain NA.
+
+```{r}
+sum(is.na(cleandf))
+dim(cleandf)
+```
+
+The resulting dataframe consists of 1996 instances and 120 attributes.
+
+## Standardization
+
+??? Commenti sulla standardizzazione ???
+
+```{r} 
+standardization <- function(x) {
+return ((x - mean(x)) / sd(x))
+}
+
+standf <- cleandf
+standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
+```
+
+```{r, include=FALSE}
+# remove all variables from environment excpet the cleaned and the original dataset
+rm(list=setdiff(ls(), c("cleandf", "crimedata", "standf")))
+```
+
+```{r, include=FALSE}
+# save cleandf and standf to CSV 
+#write.csv(cleandf, "crimedata-cleaned.csv", row.names=TRUE)
+#write.csv(standf, "crimedata-cleaned-stand.csv", row.names=TRUE)
+```
