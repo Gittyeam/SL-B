@@ -1,5 +1,6 @@
 ---
-title: "Statistical Learning Project"
+title: "Communities and Crime"
+subtitle: "Statistical Learning Final Exam Project"
 author: "Caria Natascia, Cozzolino Claudia and Petrella Alfredo"
 date: "26 maggio 2020"
 output: pdf_document
@@ -48,34 +49,37 @@ set.seed(1234)
 
 # Aim of the project
 
+Predicting the rate of violent crime in a community can be particularly helpful in reducing the actual possibility of such crimes occurring.
+Socio-economic, environmental and demographic characteristics can be important predictors of the level of violent crime in a population.
+Therefore, determining which factors are the most influential can play a key role in understanding this complex phenomenon of crime.
+
+This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the UCI Dataset Repository.
+
 # Dataset Description
+
+The dataset contains a total number of 2215 instances, each one associated to a community in the US, and 147 attributes which result from the combination of socio-economic data from 1990 US Census, law enforcement data from the 1990 US LEMAS survey and crimedata from the 1995 FBI UCR.
 
 # Data Cleaning
 
-We know from documentation that missing values are stored as "?".
-
 ```{r}
 # import dataset
-crimedata <- read.csv("crimedata.csv", na.strings="?")
+crimedata <- read.csv("crimedata.csv", na.strings="?") # missing values are stored as "?"
 dim(crimedata)
 ```
-2215 rows and 147 columns
 
 Attributes information:
 
 * 4 non-predictive (communityname, state, countyCode, communityCode, fold)
 * 125 predictive
-* 18 potential predictor (??? intendete response?) (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries,
-  burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
+* 18 potential response (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries, burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
 
-From UCI description (see ref sito web [num bibliografia]) we know that the variables communityname and state are nominal while the remaining are all numeric.
+From UCI description we know that the variables communityname and state are nominal while the remaining are all numeric.
+
 ```{r}
 # check if variables communityname and state are stored as factors
 is.factor(crimedata$communityname)
 is.factor(crimedata$state)
-```
 
-```{r}
 # check number of numeric variables: 145 (= 147 - 2) expected
 sum(sapply(crimedata, is.numeric))
 ```
@@ -83,13 +87,17 @@ sum(sapply(crimedata, is.numeric))
 ## Missing values
 
 ```{r}
-# handle missing values
-
 # inspect total NA
 sum(is.na(crimedata))
 mean(is.na(crimedata))
 ```
+
 More than 10% of values is missing.
+
+```{r, include=FALSE}
+# install.packages("varhandle", dependencies = T)
+library(varhandle)
+```
 
 ```{r}
 # nadf dataframe with columns that present NA 
@@ -98,52 +106,46 @@ nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRU
 There are 41 columns with missing values, many of them with more than 50% of the data missing.
 Among them:
 
-* 3 non-predictive (countyCode, communityCode, fold)
-* Many "Lemas" ---> Check info on these variables to understand what they refer
-* Policing information
-* Potential Predictor (??? intendete response?) (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
+* 3 non-predictive (countyCode, communityCode, fold);
+* many variables from US LEMAS dataset, including policing information;
+* potential response (rapes, rapesPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop in particular)
 
 From documentaion:
 
-The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the 
-United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of
-rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted
-communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).
+*The per capita violent crimes variable was calculated using population and the sum of crime variables considered violent crimes in the United States: murder, rape, robbery, and assault. There was apparently some controversy in some states concerning the counting of rapes. These resulted in missing values for rape, which resulted in missing values for per capita violent crime. Many of these omitted communities were from the midwestern USA (Minnesota, Illinois, and Michigan have many of these).*
 
-The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United
-States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').
+*The per capita nonviolent crime variable was calculated using the sum of crime variables considered non-violent crimes in the United States: burglaries, larcenies, auto thefts and arsons. (There are many other types of crimes, these only include FBI 'Index Crimes').*
 
-Looking to the dataset, other suspecious values equal to 0.00 have been found
+Looking to the dataset, other suspecious values equal to 0.00 have been found:
+
 ```{r}
 zero_count <- function(x) sum(x==0, na.rm = TRUE)
 zerodf <- lapply(crimedata, zero_count)[lapply(crimedata, zero_count)!=0]
 names(zerodf)
 ```
-Suspecious zeros: numbUrban, pctUrban.
 
-The columns with more than 50% NA are dropped and so were the variables fold (not useful), OwnOccQrange and RentQrange (obtained as the difference
-of other columns). We decided to keep the other columns with zero values due to their meaningfulness.
+Although it makes sense for some of these variables to take zero values, for others it seems unrealistic. However, we do not have any information about it in the documentation.
+
+Therefore, columns with more than 50% NA are dropped and so are the variables fold (not useful), OwnOccQrange and RentQrange (obtained as the difference of other columns). We decide to keep the other columns with zero values due to their meaningfulness.
+
 ```{r}
-# Find columns with > 50% NA
+# find columns with > 50% NA
 coltodrop <- as.vector(nadf$column_name[nadf$ratio_of_NA>0.50])
 
 # add other columns to remove
 coltodrop <- c(coltodrop, "fold", "OwnOccQrange", "RentQrange")
 coltodrop
+
+# drop columns with > 50% NA and clearly redundant ones
+cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
 ```
 
 ### Possible ways to handle missing values:
-Firstly, all columns with > 50% NA are removed.
-```{r}
-# Drop columns with > 50% NA and clearly redundant ones
-cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
 
-```
+The remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per capita income for people with 'other' heritage), which has only one missing value.
 
-Then, the remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per
-capita income for people with 'other' heritage), which has only one missing value.
 ```{r}
-# Remaining columns with NA
+# remaining columns with NA
 nadf <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=FALSE, na.value = NA)
 nacolnames <- as.vector(nadf$column_name)
 nacolnames
@@ -154,17 +156,24 @@ Possible ways to handle the remaining missing values:
 2. substitute a missing value with the average computed over the state a community belongs;
 3. leave NA value and consider it as another category.
 
-We decide to proceed as in point 2.
+```{r}
+# rows with NA
+narows <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=TRUE, barplot=FALSE, na.value = NA)
+dim(narows)[1]
+```
+
+Since there are a lot of rows that have at least one missing values, we decide to proceed as in point 2.
+
 ```{r}
 # dataframe of the columns which still contain NA with the mean computed over the state
 meandf <- aggregate(cleandf[,nacolnames], list(cleandf$state), function(x) mean(x, na.rm = TRUE))
 sum(is.na(meandf))
 ```
 
-The dataframe with the mean contains NaN values, this means that there are States for which the value of a certain feature is zero for
-all communities that belong to them.
+The dataframe with the mean contains NaN values, this means that there are States for which the value of a certain feature is zero for all communities that belong to them.
 This happens for IL, MI (no data of rapes, rapesPerPop, ViolentCrimesPerPop), KS, VT (no data of arsons, arsonsPerPop, nonViolPerPop).
 Moreover from documentation we know that also MN has a lot of missing values for rapes (59 out of 66):
+
 ```{r}
 mnNA = sum(is.na(cleandf[cleandf$state=="MN","rapes"]))
 mnTot = length(cleandf[cleandf$state=="MN","rapes"])
@@ -172,15 +181,17 @@ c(mnNA, mnTot, mnNA/mnTot)
 ```
 
 Therefore, data related to those states is removed.
+
 ```{r}
 rowtodrop <- as.numeric(rownames(cleandf[cleandf$state %in% c("IL","MI","MN","KS","VT"),]))
 
 cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
-For the remaining variables with missing values, we substitute NA with the mean computed over the state
+For the remaining variables with missing values, we substitute NA with the mean computed over the state.
+
 ```{r}
-# Substitute a missing value with the average computed over the state
+# substitute a missing value with the average computed over the state
 for(col in nacolnames) {
   match_table <- tapply(cleandf[[col]], cleandf$state, mean, na.rm=TRUE)
   NA_position <- which(is.na(cleandf[[col]]))
@@ -188,19 +199,17 @@ for(col in nacolnames) {
 }
 ```
 
-Now cleandf doeas not contain NA
+Now cleandf doeas not contain NA.
 ```{r}
 sum(is.na(cleandf))
 dim(cleandf)
 ```
 
-```{r , include=FALSE}
-# Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf", "crimedata")))
-```
+The resulting dataframe consists of 1996 instances and 120 attributes.
 
+## Standardization
 
-# Standardization
+??? Commenti sulla standardizzazione ???
 
 ```{r} 
 standardization <- function(x) {
@@ -211,7 +220,17 @@ standf <- cleandf
 standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
 ```
 
-# Exploratory Data Analysis 
+```{r, include=FALSE}
+# remove all variables from environment excpet the cleaned and the original dataset
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf")))
+```
+
+```{r, include=FALSE}
+# save cleandf and standf to CSV 
+# write.csv(cleandf, "crimedata-cleaned.csv", row.names=TRUE)
+# write.csv(standf, "crimedata-cleaned-stand.csv", row.names=TRUE)
+```
+
 ```{r, include=FALSE}
 Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
 Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
@@ -221,6 +240,13 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
         rgb(0.03, 0.23, 0.3, 0.7))
 ```
 
+# Exploratory Data Analysis 
+
+```{r}
+# import cleaned dataset
+# cleandf <- read.csv("crimedata-cleaned.csv", row.names = 1)
+# dim(cleandf)
+```
 
 ```{r}
 # Violent Crimes per 100K Population - State aggregation - Mean
@@ -229,8 +255,28 @@ names(vc_state)[names(vc_state) == "Group.1"] <- "state"
 names(vc_state)[names(vc_state) == "x"] <- "ViolentCrimesMean"
 ```
 
+First of all we try to understand if the phenomenon of crime occurs equally in different American states.
+
 ```{r}
 summary(vc_state$ViolentCrimesMean)
+```
+
+The summary suggests that the distrubution is right skewed. Let us check it with some plots.
+
+```{r}
+par(mfrow=c(1,2))
+hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes",
+     xlab = "Violent Crimes per 100K popuation")
+lines(density(cleandf$ViolentCrimesPerPop))
+
+boxplot(cleandf$ViolentCrimesPerPop, col = Col[1], main="Violent Crimes")
+
+par(mfrow=c(1,1))
+```
+
+```{r, include=FALSE}
+library(ggplot2)
+library(usmap)
 ```
 
 ```{r, fig.height = 3, fig.align = "center"}
@@ -241,7 +287,6 @@ label=scales::comma)+
   theme(legend.position = "right")
 
 ```
-
 
 ```{r}
 violent_names <- c("murders", "rapes", "robberies", "assaults")
@@ -298,31 +343,61 @@ boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)])
 par(mfrow=c(1,1))
 ```
 
+Let us analyze which variables are more correlated (correlation>0.5) with the variable of violent crimes.
+
 ```{r}
-coltodrop <- c(1,2, seq(103,118))
-corrdf <- cleandf[,-coltodrop]
+coltodrop <- c(1,2, seq(103,118), 120)
+viol.corrdf <- cleandf[,-coltodrop]
 
 # correlation matrix
-cm <- cor(corrdf, use='complete.obs')
+viol.cm <- cor(viol.corrdf, use='complete.obs')
 
-vcorr <- cm[,dim(cm)[2]]
-vnames <- names(vcorr[abs(vcorr)>0.5])
+# violent crimes correlation
+ViolCrimes.corr <- viol.cm[,dim(viol.cm)[2]]
+ViolCrimes.names <- names((ViolCrimes.corr)>0.5)
 
+sort(ViolCrimes.corr[abs(ViolCrimes.corr)>0.5])
 ```
+
+It seems that the variables more correlated with violent crimes are also correlated with each other. For instance, the attributes PctFam2Par, PctYoungKids2Par, PctKids2Par, PctTeen2Par all refer to the family structure, in particular to the percentage of families (with kids with different age) that are headed by two parents. Probably, also the variables TotalPctDiv, FemalePctDiv and MalePctDiv in addition to being trivially correlated with each other, are correlated with the previous ones.
+In general we can say that the family structure, the marital status, the economic status ( pctWInvInc, PctPopUnderPov, PctWPubAsst) and the ethnicity (racepctWhite, racepctblack) are 4 main clusters stricly correlated with Violent Crimes.
+
+Let us investigate if and how these clusters are cross-correlated through a scatterplot.
 
 ```{r}
-pairs(cleandf[,colnames(cleandf)%in% vnames], pch = 20)
+pairs(cleandf[,colnames(cleandf)%in% ViolCrimes.names], pch = 20)
 ```
 
-- osservazioni sulle correlate con violcrimes, e tra loro, tre macro aree, confounding , vedi pag wiki per storia crimine brutta :( 
-- domande---
+The plot confirms what already said above.
+Moreover, we can observe that there exists also a relationship between ethnicity and family structure:
+* there is a negative correlation between the percentage of African-American and the percentage of families (with kids differently aged) headed by 2 parents;
+* there is a strong positive correlation between the percentage of African-American and the percentage of kids born from never married parents.
 
--  scelta response violent  
+```{r}
+african.corr <- viol.cm[,3]
+sort(african.corr[abs(african.corr)>0.5])
+```
 
+We carry now the same analysis in order to understand which variables are more correlated (correlation>0.5) with the variable of non violent crimes.
 
-```{r , include=FALSE}
-# Remove all variables from environment excpet the cleaned and the original dataset
-rm(list=setdiff(ls(), c("cleandf","crimedata","standf", "Col")))
+```{r}
+coltodrop <- c(1,2, seq(103,119))
+nonViol.corrdf <- cleandf[,-coltodrop]
+
+# correlation matrix
+nonViol.cm <- cor(nonViol.corrdf, use='complete.obs')
+
+# violent crimes correlation
+nonViol.corr <- nonViol.cm[,dim(nonViol.cm)[2]]
+
+sort(nonViol.corr[abs(nonViol.corr)>0.5])
+```
+
+We can observe that the most correlated variables are still those related to the family structure, the marital status and poverty.
+
+```{r, include=FALSE}
+# remove no more useful variables
+rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf", "Col")))
 ```
 
 
