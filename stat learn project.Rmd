@@ -53,7 +53,7 @@ Predicting the rate of violent crime in a community can be particularly helpful 
 Socio-economic, environmental and demographic characteristics can be important predictors of the level of violent crime in a population.
 Therefore, determining which factors are the most influential can play a key role in understanding this complex phenomenon of crime.
 
-This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the UCI Dataset Repository.
+This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the [UCI Dataset Repository](https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized).
 
 # Dataset Description
 
@@ -69,7 +69,7 @@ dim(crimedata)
 
 Attributes information:
 
-* 4 non-predictive (communityname, state, countyCode, communityCode, fold)
+* 4 non-predictive (communityname, countyCode, communityCode, fold)
 * 125 predictive
 * 18 potential response (murders, murdPerPop, rapes, rapesPerPop, robberies, robbbPerPop, assaults, assaultPerPop, burglaries, burglPerPop, larcenies, larcPerPop, autoTheft, autoTheftPerPop, arsons, arsonsPerPop, ViolentCrimesPerPop, nonViolPerPop)
 
@@ -103,6 +103,7 @@ library(varhandle)
 # nadf dataframe with columns that present NA 
 nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
 ```
+
 There are 41 columns with missing values, many of them with more than 50% of the data missing.
 Among them:
 
@@ -200,6 +201,7 @@ for(col in nacolnames) {
 ```
 
 Now cleandf doeas not contain NA.
+
 ```{r}
 sum(is.na(cleandf))
 dim(cleandf)
@@ -221,7 +223,7 @@ standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardi
 ```
 
 ```{r, include=FALSE}
-# remove all variables from environment excpet the cleaned and the original dataset
+# remove all variables from environment excpet useful dataset
 rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf")))
 ```
 
