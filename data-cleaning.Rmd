@@ -54,8 +54,7 @@ is.factor(crimedata$state)
 sum(sapply(crimedata, is.numeric))
 ```
 
-
-# Missing values
+## Missing values
 
 ```{r}
 # inspect total NA
@@ -162,7 +161,7 @@ cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 For the remaining variables with missing values, we substitute NA with the mean computed over the state.
 
 ```{r}
-# Substitute a missing value with the average computed over the state
+# substitute a missing value with the average computed over the state
 for(col in nacolnames) {
   match_table <- tapply(cleandf[[col]], cleandf$state, mean, na.rm=TRUE)
   NA_position <- which(is.na(cleandf[[col]]))
