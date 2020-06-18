@@ -53,7 +53,7 @@ Predicting the rate of violent crime in a community can be particularly helpful 
 Socio-economic, environmental and demographic characteristics can be important predictors of the level of violent crime in a population.
 Therefore, determining which factors are the most influential can play a key role in understanding this complex phenomenon of crime.
 
-This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the [UCI Dataset Repository](https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized).
+This is what we are going to do with this project, by investigating the USA Communities and Crime Data Set, sourced from the [UCI Dataset Repository](https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized)[7].
 
 # Dataset Description
 
@@ -308,7 +308,6 @@ vc_state[vc_state$ViolentCrimesMean == max(vc_state$ViolentCrimesMean),]
 It is evident that the value associated to Washington D.C. is much larger than the others.
 However, this huge discrepancy may be due to the fact that we are dealing with the capital of the US, then it is interesting to maintain this value in the dataset.
 
-
 Let us now look to the violent crimes independently.
 We recall that the crimes considered to be violent in the United States are murder, rape, robbery and assault.
 
@@ -392,7 +391,7 @@ boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)], main = "Non Violent
 par(mfrow=c(1,1))
 ```
 
-Among the non violent crimes, in general the most frequent are larcenies.
+Among the non-violent crimes, in general the most frequent are larcenies.
 
 ```{r, fig.width=16, fig.height=5, eval=FALSE, include=FALSE}
 # Non Violent Crimes categories per 100K Population - State aggregation - Mean
@@ -459,7 +458,7 @@ sort(caucasian.corr[abs(caucasian.corr)>0.5])
 ```
 
 The above considerations could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence, or, on the other hand, they could highlight the presence of the well known, but always tricky, confounding effect, about which we'll go into details below.
-Along with that, another fundamental factor has to be considered: a pretty famous social phenomenon, known as the *crack epidemic*, took place in the USA during the past 80s and 90s, period in which our data have been gathered. Shortly speaking, faced with dropping prices of cocaine powder, drug dealers made a decision to convert it to "crack", a solid smokeable form of cocaine, that could be sold in smaller quantities, to more people. It was cheap, simple to produce, ready to use, and highly profitable for dealers to develop, which made the new product spread rapidly and made the homicide rate for young black males more than doubled, due to the fact that the distribution of the drug to the end-user occurred mainly in low-income inner city neighborhoods: this gave many inner-city residents the opportunity to move up the "economic ladder" in a drug market, at the cost of violence to establish territorial control. Moreover, this habits caused a long term effect in the society, estending the phenomenon over its actual time period. [cite wikipedia? The articles cited in Wikipedia? *The New Jim Crow: Mass Incarceration in the Age of Colorblindness*?]
+Along with that, another fundamental factor has to be considered: a pretty famous social phenomenon, known as the *crack epidemic*, took place in the USA during the past 80s and 90s, period in which our data have been gathered. Shortly speaking, faced with dropping prices of cocaine powder, drug dealers made a decision to convert it to "crack", a solid smokeable form of cocaine, that could be sold in smaller quantities, to more people. It was cheap, simple to produce, ready to use, and highly profitable for dealers to develop, which made the new product spread rapidly and made the homicide rate for young black males more than doubled, due to the fact that the distribution of the drug to the end-user occurred mainly in low-income inner city neighborhoods: this gave many inner-city residents the opportunity to move up the "economic ladder" in a drug market, at the cost of violence to establish territorial control. Moreover, this habits caused a long term effect in the society, estending the phenomenon over its actual time period[2,3,4,5].
 
 We carry now the same analysis in order to understand which variables are more correlated (correlation>0.5) with the variable of non violent crimes.
 
@@ -612,7 +611,7 @@ The residual plot identifies some outliers. However, it can be difficult to deci
 by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in
 absolute value are possible outliers.
 
-Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898. [ref biblio?].
+Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898[1].
 
 ```{r}
 1 - pnorm(3)
@@ -726,7 +725,7 @@ n <- dim(df)[1]
 abline(v=(p+1)/n, col = "red")
 ```
 
-The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above $3(p+1)/n$ [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
+The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above $3(p+1)/n$ [8](https://online.stat.psu.edu/stat462/node/171/). Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
 
 ```{r}
 lev <- names(hv[hv>3*(p+1)/n])
@@ -979,8 +978,8 @@ summary(full.mod)
 
 ```{r}
 # prediction 
-n <- 400
-p <- 52
+n <- dim(X.test)[1]
+p <- dim(X.test)[2]
 f.pred = predict(full.mod, X.test)
 rss <- sum((Y.test - f.pred)^2)           # Residual Sum of Squares
 ess <- sum((f.pred - mean(Y.test))^2)     # Explained Sum of Squares
@@ -1056,7 +1055,7 @@ as.data.frame(coef)
 
 advar<-names(coef)[-1]
 
-n <- 400
+n <- dim(X.test)[1]
 p <- mad
 ad.pred=as.matrix(X.test[,advar])%*%coef[advar] + coef["(Intercept)"]
 rss <- sum((Y.test - ad.pred)^2)       # Residual Sum of Squares
@@ -1079,7 +1078,7 @@ as.data.frame(coef)
 
 cpvar<-names(coef)[-1]
 
-n <- 400
+n <- dim(X.test)[1]
 p <- mcp
 
 cp.pred=as.matrix(X.test[,cpvar])%*%coef[cpvar] + coef["(Intercept)"]
@@ -1103,7 +1102,7 @@ as.data.frame(coef)
 
 bvar<-names(coef)[-1]
 
-n <- 400
+n <- dim(X.test)[1]
 p <- mb
 
 b.pred=as.matrix(X.test[,bvar])%*%coef[bvar] + coef["(Intercept)"]
@@ -1135,7 +1134,7 @@ summary(step.mod)
 
 ```{r}
 # prediction 
-n <- 400
+n <- dim(X.test)[1]
 p <- 31
 bw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - bw.pred)^2)           # Residual Sum of Squares
@@ -1162,7 +1161,7 @@ summary(step.mod)
 
 ```{r}
 # prediction 
-n <- 400
+n <- dim(X.test)[1]
 p <- 27
 fw.pred = predict(step.mod, X.test)
 rss <- sum((Y.test - fw.pred)^2)       # Residual Sum of Squares
@@ -1300,7 +1299,7 @@ lam.1se <- lasso.mod.cv$lambda.1se
 ```
 
 ```{r}
-# Ridge-Regression on the entire train set
+# Lasso-Regression on the entire train set
 lasso.mod <- glmnet(X.train, Y.train , alpha=1, lambda=lambda.val)
 plot(lasso.mod, xvar = "lambda")
 abline(v=log(lam.min), lty=2, col=1)
@@ -1365,7 +1364,7 @@ tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1414,7 +1413,7 @@ fviz_pca_var(pc,
 ```
 The principal limitation of PCA concerns interpretation, but it is possible to explore the resulting loadings to
 hopefully extrapolate the semantic area of the main components in each principal direction.
-Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), for example, it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor. As for the second one, the geo-cultural factors. ??? Razzismoooo scritto in modo elegante o tolgo?
+Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), for example, it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor. As for the second one, the geo-cultural factors are predominant.
 
 
 ### PC regression
@@ -1432,13 +1431,13 @@ pcr.fit = pcr(Y.train~., data=X.train, validation = "CV") # k=10 by default
 # plot of CV error
 validationplot(pcr.fit, val.type = "MSEP")
 validationplot(pcr.fit, val.type = "R2")
-# looking at the plot, 12 could be a great choice
+# looking at the plot, 11 could be a great choice
 ```
 
-It shows up that great tradeoff is to train the final model using the first 12 principal components, and in this way we're able to reach a slightly better accuracy than the previous models, still keepeng low the dimension of the used dataset.
+It shows up that great tradeoff is to train the final model using the first 11 principal components, and in this way we're able to reach a slightly better accuracy than the previous models, still keepeng low the dimension of the used dataset.
 ```{r}
 # prediction in the model above
-n <- 400
+n <- dim(X.test)[1]
 p <- 11
 pcr.pred = predict(pcr.fit, X.test, ncomp=11)
 rss <- sum((Y.test - pcr.pred)^2)          # Residual Sum of Squares
@@ -1453,14 +1452,14 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 
-# Other possible predictive Models
+# Other possible predictive models
 
 In this section other models have been tested for the prediction of the violent and non violent rate var variables.
 
 ## Add categorical predictor
 
-Untill now we assumed that the response variable ViolentCrimesPerPop has equal mean and behaviour between the different states. Even if in practice this assumption considerably simplified the model, the hypothesis of similar distribution between different cities belonging to a vast territory such as the American one, characterized by a wide variety of geographic, cultural and social conditions, could be a too strong request.
-Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the  standardized and log transformed version of the data). The horizontal line draws the mean value between all data without distinction.
+Until now we assumed that the response variable ViolentCrimesPerPop has equal behaviour between the different states. Even if in practice this assumption considerably simplified the model, the hypothesis of similar distribution between different cities belonging to a vast territory such as the American one, characterized by a wide variety of geographic, cultural and social conditions, could be a too strong request.
+Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the standardized and log transformed version of the data). The horizontal line draws the mean value between all data without distinction.
 
 ```{r}
 boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= Col)
@@ -1492,7 +1491,7 @@ Testing the model, as expected the MSE is slightly better than the equivalent mo
 # prediction 
 pred = predict(regc.out, XS.test)
 
-n <- 400
+n <- dim(XS.test)[1]
 p <- 94
 
 rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
@@ -1583,7 +1582,7 @@ summary(regc.out)
 # prediction 
 pred = predict(regc.out, XS.test)
 
-n <- 400
+n <- dim(XS.test)[1]
 p <- 105
 
 rss <- sum((Y.test - pred)^2)       # Residual Sum of Squares
@@ -1647,7 +1646,7 @@ as.data.frame(cbind(mse,adjr2))
 ## Binary classification models
 
 The last section of our research is dedicated to binary classification. The capability of logistic regressor and KNN algorithm have been tested in the classification task among two level of ViolentCrimesPerPop: High and Low. 
-In particular, we set a threshold in order to distinguish if a community has high level of crimes per population. Different options were possible for the value of this threshold such as considering the mean among all the US provided in [see refer], the mean or the median of our entire dataset.  
+In particular, we set a threshold in order to distinguish if a community has high level of crimes per population. Different options were possible for the value of this threshold such as considering the mean among all the US provided in [6](http://www.disastercenter.com/crime/uscrime.htm), the mean or the median of our entire dataset.  
 
 For convenience in this simplistic study, we decided to proceed using the median of ViolentCrimesPerPop, the main reasons of this choice are that, first of all, it is more representative than the mean since the distribution is skewed, secondly this value split the data in balanced classes.
 
@@ -1739,7 +1738,6 @@ fit <- train(YF.train ~ .,
              data       = XY.train)
 
 fit
-
 ```
 
 From the C.V., the best k is 5, then the model is performed with this value on the test set, returning an accuracy of 81.5%.
@@ -1754,9 +1752,17 @@ mean(knn.pred==YF.test)
 
 
 # Conclusions - Comparing results
-Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
-#References
+Siamo stati bravi Rover, guarda che bei grafici.. (oh no) ???
+
+# Technical appendix
+
+## 
+## 
+## 
+## 
+
+# References
 
 [1] "An Introduction to Statistical Learning", G. James, D. Witten, T. Hastie and R. Tibshirani, Springer, 2013.
 [2] "DEA History Book, 1876–1990" (drug usage & enforcement), US Department of Justice, 1991, USDoJ.gov, webpage: DoJ-DEA-History-1985-1990.
