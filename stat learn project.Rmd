@@ -536,7 +536,7 @@ The plot of residuals versus fitted values shows a little pattern, however it se
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
 solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
-With a trial and error approach we came out with the best transformation: $\log(Y)+1$, the following figures give empirical proof of the positive effect given by the chosen function.
+With a trial and error approach we came out with the best transformation: $\log(Y)+1$, of which the resulting density is shown the following figures.
 
 
 ```{r}
