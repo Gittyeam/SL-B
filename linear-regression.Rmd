@@ -1,0 +1,497 @@
+---
+title: "Statistical Learning Final Exam Project"
+author: "Caria Natascia, Cozzolino Claudia and Petrella Alfredo"
+date: "18 giugno 2020"
+output:
+  pdf_document:
+    keep_tex: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Multiple linear regression
+
+For almost the entire project, we decided to focus the analyzes on the ViolentCrimePerPop variable only, i.e. the rate of the sum of the violent crimes, according to the US laws, per population.
+In particular our main task is to predict this response from the socio-economic and demographic attributes per community provided by the dataset using a multiple linear regression model.
+
+For this purpose, we firstly remove non predictive variables, such as the community name and all the other crimes columns except for the ViolentCrimesPerPop response. Note that in this first study we also discarded the categorical attribute state, assuming it as not influential.
+
+
+```{r}
+# import cleaned dataset
+cleandf <- read.csv("crimedata-cleaned.csv", row.names = 1)
+dim(cleandf)
+```
+
+```{r} 
+standardization <- function(x) {
+return ((x - mean(x)) / sd(x))
+}
+
+standf <- cleandf
+standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
+```
+
+```{r, include=FALSE}
+Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
+Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
+        rgb(1, 0.82, 0.4, 0.7),
+        rgb(0.02, 0.84, 0.63, 0.7),
+        rgb(0.07, 0.54, 0.7, 0.7),
+        rgb(0.03, 0.23, 0.3, 0.7))
+```
+
+
+```{r}
+coltodrop <- c(1,2, seq(103,120)[-17]) # -17 keeps ViolentCrimesPerPop
+
+df <- standf[,-coltodrop]
+```
+
+We then fit our multiple linear regression model and show statistics and plot about the residuals.
+```{r}
+reg.out <- lm(ViolentCrimesPerPop~., data=df)
+```
+
+```{r}
+se  <- summary(reg.out)$sigma                  # se
+rsq <- summary(reg.out)$r.squared              # R^2
+adrsq <- summary(reg.out)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out)
+par(mfrow=c(1,1))
+```
+
+To analyze in detail the results obtained from this first simple model, we recall the necessary theoretical assumptions that must be verified.
+
+## Assessing Model Assumptions:
+The model assumptions are:
+
+- Linearity of the response-predictor relationships;
+- Homeschedasticity of the error terms: Var($\epsilon_i$) = $\sigma^2$;
+- Normality and Independence of the error terms $\epsilon_i$.
+
+To check the conditions listed above we use the residual plots provided by lm.
+
+### Linearity
+The plot of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in the data and that the errors are uncorrelated. 
+
+### Homoschedasticity
+The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
+solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
+
+With a trial and error approach we came out with the best transformation: $\log(Y)+1$, the following figures give empirical proof of the positive effect given by the chosen function.
+
+
+```{r}
+par(mfrow=c(1,2))
+hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(cleandf$ViolentCrimesPerPop))
+
+hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(cleandf$ViolentCrimesPerPop +1)))
+par(mfrow=c(1,1))
+
+
+par(mfrow=c(1,2))
+hist(standf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
+lines(density(standf$ViolentCrimesPerPop))
+
+hist(log(standf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
+lines(density(log(standf$ViolentCrimesPerPop +1)))
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(cleandf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(cleandf$ViolentCrimesPerPop)
+
+qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(cleandf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+
+par(mfrow=c(1,2))
+qqnorm(standf$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(standf$ViolentCrimesPerPop)
+
+qqnorm(log(standf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(standf$ViolentCrimesPerPop +1))
+par(mfrow=c(1,1))
+
+```
+
+At this point we fitted again the linear model using the transformed response.
+
+```{r}
+reg.out2 <- lm(log(ViolentCrimesPerPop+1)~., data=df)
+```
+
+```{r}
+se  <- summary(reg.out2)$sigma                  # se
+rsq <- summary(reg.out2)$r.squared              # R^2
+adrsq <- summary(reg.out2)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(reg.out2)
+par(mfrow=c(1,1))
+```
+
+The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity, moreover it managed to considerably improve the statistic measures.
+
+### Normality and Independence of errors
+Finally, the only hypothesis left to check is the normality. We can assess this condition looking to the QQ plot: most of the points seem to coincide with the theoretical line, the only exceptions are those at the ends which reveal a distribution with heavier tails. This effect could be motivated by other problems, such as outliers, as shown below.
+
+
+## Other Possible Problems
+
+### Outliers
+The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
+by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in
+absolute value are possible outliers.
+
+Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898. [ref biblio?].
+
+```{r}
+1 - pnorm(3)
+```
+
+```{r}
+plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Studentized Residuals")
+
+abline(h=3, col = "red")
+abline(h=-3, col = "red")
+```
+
+
+
+```{r}
+out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
+
+standf[out,c(1,2)]
+
+cityout<-standf$communityname[rownames(standf) %in% out]
+```
+
+
+```{r}
+citycord <- read.csv("cities.csv")
+
+# Rename column 
+colnames(citycord)[colnames(citycord) == "city"] <- "communityname"
+colnames(citycord)[colnames(citycord) == "latitude"] <- "lat"
+colnames(citycord)[colnames(citycord) == "longitude"] <- "lon"
+
+
+citycord<-merge(citycord,cleandf,by=c("state","communityname"))
+```
+
+
+```{r}
+dfplot <- citycord[citycord$communityname %in% cityout, c("lon","lat","ViolentCrimesPerPop","communityname")]
+```
+
+Using this selection criterion, 20 communities are to be considered outliers. In a study like the one we are conducting, in which socio-economic, environmental and demographic information is fundamental, it might be interesting to investigate where these cities are located geographically. The following map shows the outliers communities with respect the ViolentCrimesPerPop variable. It can be noticed that the large majiority are clusterized in the state of NY and in the southern regions.
+
+```{r}
+library(ggplot2)
+# install.packages("usmap")
+library(usmap)
+
+cities_t <- usmap_transform(dfplot)
+
+#without city labels
+plot_usmap(fill = "#06D6A0", alpha = 0.25) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = ViolentCrimesPerPop),
+             color = "#073B4C", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Outliers communities",
+       size = "Violent Crimes per 100 K inhabitants") +
+  theme(legend.position = "right")
+
+#with city labels
+plot_usmap(fill = "#06D6A0", alpha = 0.25) +
+  ggrepel::geom_label_repel(data = cities_t,
+             aes(x = lon.1, y = lat.1, label = communityname),
+             size = 2.5, alpha = 0.8,
+             label.r = unit(0.5, "lines"), label.size = 0.55,
+             segment.color = "black", segment.size = 0.7,
+             seed = 1002) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = ViolentCrimesPerPop),
+             color = "#073B4C", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Outliers communities",
+       size = "Violent Crimes per 100 K inhabitants") +
+  theme(legend.position = "right")
+
+```
+
+
+The results of the linear regressor fitted without the outliers are shown below.
+```{r}
+# regression without outliers
+reg.out3 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% out),])
+```
+
+```{r}
+se  <- summary(reg.out3)$sigma                  # se
+rsq <- summary(reg.out3)$r.squared              # R^2
+adrsq <- summary(reg.out3)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(reg.out3)
+par(mfrow=c(1,1))
+```
+
+As expected, the RSE is smaller: 0.56 when the outliers are included versus 0.52 when they are removed. Nevertheless, since the RSE is used to compute all confidence intervals and p-values, this can have implications for the interpretation of the fit, as usual then, care should be taken in the decision of taking or dropping outliers.
+For the purpose of this work we have decided not to remove them, not only to avoid the risk of losing statistical information, but because they seem to have a geographical meaning and dropping them could make the study less consistent.
+
+### High Leverage Points
+A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+
+```{r}
+hv <- hatvalues(reg.out2)
+plot(hv, rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
+
+p <- dim(df)[2]-1
+n <- dim(df)[1]
+abline(v=(p+1)/n, col = "red")
+```
+
+The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above 3(p+1)/n [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
+
+```{r}
+lev <- names(hv[hv>3*(p+1)/n])
+standf[lev,c(1,2)]
+
+citylev<-standf$communityname[rownames(standf) %in% lev]
+```
+
+```{r}
+dfplot<-citycord[citycord$communityname %in% citylev,c("lon","lat","communityname","state","population")]
+```
+
+```{r}
+
+cities_t <- usmap_transform(dfplot)
+
+
+#without city labels
+plot_usmap(fill = "#f26b8b", alpha = 0.23) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = population),
+             color = "#a7314d", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Leverage communities",
+       size = "Total community population") +
+  theme(legend.position = "right")
+
+#with city labels
+plot_usmap(fill = "#f26b8b", alpha = 0.23) +
+  ggrepel::geom_label_repel(data = cities_t,
+             aes(x = lon.1, y = lat.1, label = communityname),
+             size = 2, alpha = 0.8,
+             label.r = unit(0.5, "lines"), label.size = 0.01,
+             segment.color = "black", segment.size = 0.5,
+             seed = 1002) +
+  geom_point(data = cities_t,
+             aes(x = lon.1, y = lat.1, size = population),
+             color = "#a7314d", alpha = 0.5) +
+  scale_size_continuous(range = c(1, 16),
+                        label = scales::comma) +
+  labs(title = "Leverage communities",
+       size = "Total community population") +
+  theme(legend.position = "right")
+
+```
+
+It is interesting to note that these cities belong in many cases to the most populous states in the US such as NY, CA, NJ, PA, TX, FL or to the the least inhabited such as AK and UT. Moreover, as for the outliers, the large majiority of them are clusterized in particular regions or states (CA, NY, NJ).
+
+
+The results of the linear regressor fitted without the high leverage points are shown below.
+```{r}
+# regression without leverage points
+reg.out4 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% lev),])
+
+se  <- summary(reg.out4)$sigma                  # se
+rsq <- summary(reg.out4)$r.squared              # R^2
+adrsq <- summary(reg.out4)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out4)
+par(mfrow=c(1,1))
+```
+
+The removal of these problematic points does not seem to significantly change the model. As a matter of fact, the RSE remains the same, while the adjusted $R^2$ decreases. Taking everything into account, we decided to keep these rows of the dataset avoiding to lose information.
+
+
+
+### Collinearity
+
+Finally, a possible problem, in particular dealing with a large number of variables as in our case, is that of collinearity. It refers to the situation in which two or more predictor variables
+are closely related to one another. The presence of collinearity can pose problems in
+the regression context, since it can be difficult to separate out the individual effects of collinear variables on the response.
+
+In addition, since collinearity reduces the accuracy of the estimates of the regression
+coefficients, it causes the standard error for $\hat \beta_j$ to grow. Recall that the
+t-statistic for each predictor is calculated by dividing $\hat \beta_j$ by its standard
+error. Consequently, collinearity results in a decline in the t-statistic. As a
+result, in the presence of collinearity, we may fail to reject $H_0:\ \beta_j = 0$. This
+means that the power of the hypothesis test is reduced by collinearity. 
+
+To avoid such a situation, it is desirable to identify and address potential
+collinearity problems while fitting the model.
+A simple way to detect collinearity is to look at the correlation matrix
+of the predictors.
+
+#### Correlation insight
+
+In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
+
+
+
+[***Alfre scelgo teeeeee***]
+```{r}
+# install.packages('corrplot')
+library(corrplot)
+
+# restrict to the predictive numeric attributes
+coltodrop <- c(1,2, seq(103,120))
+corrdf <- cleandf[,-coltodrop]
+
+# correlation matrix
+cm <- cor(corrdf, use='complete.obs')
+
+
+# correlation matrix plot
+corrplot(cm,title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
+
+# correlation tradeoff
+threshold <- 0.7
+# only strongly correlated attributes highlighted
+cma <- abs(cm) > threshold
+# number of strong correlations
+(sum(cma) - dim(corrdf)[2]) / 2
+
+# filtered correlation matrix plot
+corrplot(cma, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+
+```
+
+??? Spiega le scelte e soprattutto quella a 0.7!
+
+```{r}
+# columns with correlation with more meaningful ones higher than threshold in absolute value
+
+rem9 <- c( 
+"population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",
+"NumUnderPov","PctLess9thGrade","PctOccupMgmtProf","MalePctDivorce","FemalePctDiv","PctFam2Par",
+"PctKids2Par" ,"NumKidsBornNeverMar", "PctImmigRec5","PctImmigRec10",      
+"PctRecImmig5","PctRecImmig8","PctRecImmig10","PctSpeakEnglOnly" ,  
+"PctLargHouseOccup","PersPerOccupHous","PctHousOwnOcc","OwnOccLowQuart",     
+"OwnOccHiQuart","RentLowQ","RentHighQ","MedRent",            
+"NumInShelters","NumStreet","PctForeignBorn")
+
+rem8 <- c(rem9,
+"householdsize","racePctWhite","agePct12t29","medIncome",
+"pctWWage","pctWPubAsst","PctPopUnderPov","PersPerFam",         
+"PctYoungKids2Par","PctWorkMom","PctKidsBornNeverMar", "PctImmigRec8",       
+"PctNotSpeakEnglWell", "PctPersDenseHous","OwnOccMedVal","RentMedian",         
+"PctSameCity85")
+
+rem7 <- c(rem8,
+"pctWInvInc","PctNotHSGrad","PctBSorMore","PctLargHouseFam","PctHousLess3BR", 
+"MedNumBR","PctSameState85" )
+
+
+corrdf_ind <- corrdf[,!(colnames(corrdf) %in% rem8)]
+
+# final correlation matrix and filter
+cm_ind <- cor(corrdf_ind, use='complete.obs')
+cma_ind <- abs(cm_ind) > threshold
+
+par(mfrow=c(1,1))
+# resulting filtered correlation matrix plot
+corrplot(cma_ind, title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+
+# 0.9
+# OK perCapInc del. vs whitePerCap (21 del. vs 22, use average)
+# OK PctBSorMore kept vs PctOccupMgmtProf (32 kept vs 38, solved by 0.8)
+# OK NumKidsBornNeverMar del. vs NumImmig (50 del. vs 52, solved by 0.8)
+# 0.8
+# OK racepvtblack vs racePctWhite (3 kept vs 4, let's keep minorities)
+# OK agePct12t21 kept vs agePct12t29 (7 kept vs 8, solved by 0.7)
+# OK medIncome del. vs whitePerCap (13 del. vs 22, use average)
+# OK pctWPubAsst del. vs PctUnemployed (18 del. vs 33, solved by 0.7)
+# OK PctPopUnderPov del. vs PctHousNoPhone (29 del. vs 78, solved by 0.7)
+# OK PctYoungKids2Par del. vs PctTeen2Par (46 del. vs 47, solved by 0.7)
+# OK PctWorkMomYoungKids kept vs PctWorkMom (48 kept vs 49, unanimity)
+# OK PctImmigRecent kept vs PctImmigRec8 (53 kept vs 55)
+# OK PctSameHouse85 kept vs PctSameCity85 (94 kept vs 95, more informative)
+# 0.7
+# OK NumImmig and HousVacant (52 and 72, unanimity)
+
+# final correlation matrix plot
+corrplot(cm_ind, title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+
+par(mfrow=c(1,1))
+```
+
+
+
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
+We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
+
+
+```{r}
+corrdf <- df[,!(colnames(df) %in% rem8)]
+
+reg.out5 <- lm(log(ViolentCrimesPerPop+1)~., data=corrdf)
+#summary(reg.out5)
+
+se  <- summary(reg.out5)$sigma                  # se
+rsq <- summary(reg.out5)$r.squared              # R^2
+adrsq <- summary(reg.out5)$adj.r.squared        # adj R^2
+cat("RSE:", round(se,2), "\n")
+cat("R^2:", round(rsq,2), "\n")
+cat("adjusted R^2:", round(adrsq,2))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.out5)
+par(mfrow=c(1,1))
+```
+It is possible to notice that the model fitted from the remained 52 predictors performs better than the model obtained with all the 100 ones: the RSE decreases from 0.59 to 0.58 while the adjusted $R^2$ increases from 0.65 to 0.66. This demonstrates the importance of careful analysis of the collinearity problem, eliminating redundant information not only simplifies the model, but makes it more robust.
+
+From this point on, only the 52 variables selected in this section will be considered for the rest of the study.
+
