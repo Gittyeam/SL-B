@@ -715,7 +715,7 @@ As expected, the RSE is smaller: 0.56 when the outliers are included versus 0.52
 For the purpose of this work we have decided not to remove them, not only to avoid the risk of losing statistical information, but because they seem to have a geographical meaning and dropping them could make the study less consistent.
 
 ### High Leverage Points
-A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds $(p+1)/n$, then we may suspect that the corresponding point has high leverage.
 
 ```{r}
 hv <- hatvalues(reg.out2)
@@ -726,7 +726,7 @@ n <- dim(df)[1]
 abline(v=(p+1)/n, col = "red")
 ```
 
-The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above 3(p+1)/n [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
+The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above $3(p+1)/n$ [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
 
 ```{r}
 lev <- names(hv[hv>3*(p+1)/n])
@@ -1693,10 +1693,11 @@ Siamo stati bravi Rover, guarda che bei grafici.. (oh no)
 
 #References
 
-- An Introduction to Statistical Learning
-- https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
-- https://online.stat.psu.edu/stat462/node/171/
-- http://www.disastercenter.com/crime/uscrime.htm
-
-
-
+[1] "An Introduction to Statistical Learning", G. James, D. Witten, T. Hastie and R. Tibshirani, Springer, 2013.
+[2] "DEA History Book, 1876–1990" (drug usage & enforcement), US Department of Justice, 1991, USDoJ.gov, webpage: DoJ-DEA-History-1985-1990.
+[3] "Guns and Violence: The Enduring Impact of Crack Cocaine Markets on Young Black Males", W.N. Evans, G. Garthwaite, T. Moore, 2018.
+[4] "Measuring Crack Cocaine and Its Impact", Fryer, Roland. Harvard University Society of Fellows: 3, 66. Retrieved January 4, 2016.
+[5] "The New Jim Crow: Mass Incarceration in the Age of Colorblindness", M. Alexander.
+[6] http://www.disastercenter.com/crime/uscrime.htm.
+[7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized.
+[8] https://online.stat.psu.edu/stat462/node/171/.
