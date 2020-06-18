@@ -1178,6 +1178,197 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 
 These greedy algorithms managed in few seconds to achieve quality solutions in terms of meaningfulness and reduction of the variables, MSE and adjusted $R^2$ scores. Note that the accuracy in MSE is equal to the one of super time expensive best subset methods, backward and forward strategy proved then to be very efficient in our quite large application.
 
+## Shrinkage methods
+
+The shrinkage methods represent a valid alternative to the subset selection methods seen above, they allow to reduce the complexity of the model and moreover they perform a regularization role. While backward and forward elimination use least squares to fit a linear model that contains a subset of the predictors, the shrinkage methods fit a model containing all $p$ predictors using a technique that shrinks the coefficient estimates towards zero.
+
+Below, RIDGE and LASSO regression are implemented.
+
+```{r}
+# Convert dataframes to matrixes
+X.train <- as.matrix(X.train)
+X.test <- as.matrix(X.test)
+Y.train <- as.matrix(Y.train)
+Y.test <- as.matrix(Y.test)
+```
+
+### Ridge Regression with Cross-Validation
+
+In RIDGE regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}\beta_j^2$.
+In order to determine the best value of the regularization parameter we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
+
+```{r}
+# Lambda values to try
+lambda.val <- 10^seq(3, -3, length=100)
+
+# Ridge-Regression with 10-fold cross-validation on training set to choose lambda
+ridge.mod.cv <- cv.glmnet(X.train, Y.train, alpha=0,
+                          lambda=lambda.val, nfolds = 10)
+plot(ridge.mod.cv)
+```
+
+```{r}
+# Best cross-validated lambda
+lam.min <- ridge.mod.cv$lambda.min
+lam.1se <- ridge.mod.cv$lambda.1se
+```
+
+From the model we obtain the value of $\lambda$.min which gives the lowest cross-validation error and the value of $\lambda$.1se which has error within 1 standard error of the best model. Using the value of $\lambda$.1se results in a model that is slightly simpler than the best model and whose accuracy is comparable with the best model.
+
+```{r}
+# Ridge-Regression on the entire train set
+ridge.mod <- glmnet(X.train, Y.train , alpha=0, lambda=lambda.val)
+plot(ridge.mod, xvar = "lambda")
+abline(v=log(lam.min), lty=2, col=1)
+abline(v=log(lam.1se), lty=2, col=2)
+legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
+```
+
+RIDGE regression decreases model complexity while keeping all variables in the model by shrinking the coefficients of low-variance components more than those of highvariance components. The more lambda increases, the more the coefficients are shrinkaged towards zero.
+
+Let us compare the coefficients which result from the choice of $\lambda$.min and $\lambda$.1se.
+
+```{r}
+# ridge regression estimated coefficients for lambda.min
+ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
+ridge.coef <- as.data.frame(ridge.coef)
+colnames(ridge.coef) <- c("Coefficients")
+
+# Most relevant predictors
+subset.data.frame(ridge.coef, abs(Coefficients)>0.1)
+```
+
+The predictors having an estimated coefficient greater than 0.1 are:
+
+* the percentage of households with investment/rent income (pctWInvInc);
+* the percentage of percentage of population who are divorced (TotalPctDiv);
+* the percentage of African-American (racepctblack);
+* the percentage of people living in areas classified as urban (pctUrban).
+
+```{r}
+# ridge regression estimated coefficients for lambda.1se
+ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.1se))
+ridge.coef <- as.data.frame(ridge.coef)
+colnames(ridge.coef) <- c("Coefficients")
+
+# Most relevant predictors
+subset.data.frame(ridge.coef, abs(Coefficients)>0.1)
+```
+
+The most relevant predictors are again racepctblack, TotalPctDiv and pctWInvInc; however, as a result of choosing a higher lambda value, the associated estimated coefficients are smaller than before.
+
+Since the model with $\lambda$.1se would trivially perform worse, we test the model associated to $\lambda$.min.
+
+```{r}
+# Prediction on test set
+Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
+
+n <- dim(X.test)[1]
+p <- dim(ridge.coef)[1] -1 #remove intercept
+
+rss <- sum((Y.test - Y.hat)^2)             # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test))^2)       # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
+
+
+### Lasso Regression with Cross-Validation
+
+In LASSO regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}|\beta_j|)$.
+In order to determine the best value of the regularization parameter we use the same approach as before and we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
+
+```{r}
+# Lambda values to try
+lambda.val <- 10^seq(3, -3, length=100)
+
+# Lasso-Regression with 10-fold cross-validation on training set to choose lambda
+lasso.mod.cv <- cv.glmnet(X.train, Y.train, alpha=1,
+                          lambda=lambda.val, nfolds = 10)
+plot(lasso.mod.cv)
+```
+
+```{r}
+# Best cross-validated lambda
+lam.min <- lasso.mod.cv$lambda.min
+lam.1se <- lasso.mod.cv$lambda.1se
+```
+
+```{r}
+# Ridge-Regression on the entire train set
+lasso.mod <- glmnet(X.train, Y.train , alpha=1, lambda=lambda.val)
+plot(lasso.mod, xvar = "lambda")
+abline(v=log(lam.min), lty=2, col=1)
+abline(v=log(lam.1se), lty=2, col=2)
+legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
+```
+
+Unlike RIDGE regression, for high values of $\lambda$, many coefficients are exactly zeroed under LASSO.
+
+Let us compare the coefficients which result from the choice of $\lambda$.min and $\lambda$.1se.
+
+```{r}
+# lasso regression estimated coefficients for lambda.min
+lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
+lasso.coef <- as.data.frame(lasso.coef)
+colnames(lasso.coef) <- c("Coefficients")
+
+# number of predictors
+p.min <- sum(abs(lasso.coef$Coefficients)>0)-1  #remove intercept
+
+# coefficients different from zero 
+subset.data.frame(lasso.coef, abs(Coefficients)>0.1)
+```
+
+LASSO regression with $\lambda$.min selects 33 variables, collecting different kinds of information: ethnicity, age, income, education, marital status, houses occupation and many others.
+Also in this case, the most relavant predictors (with estimated coefficient greater than 0.1) are almost the same as for RIDGE regression:
+
+* the percentage of households with investment/rent income (pctWInvInc);
+* the percentage of percentage of population who are divorced (TotalPctDiv);
+* the percentage of African-American (racepctblack);
+* the percentage of Hispanic-American (racePctHisp);
+* the percentage of people living in areas classified as urban (pctUrban).
+
+
+```{r}
+# lasso regression estimated coefficients for lambda.1se
+lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.1se))
+lasso.coef <- as.data.frame(lasso.coef)
+colnames(lasso.coef) <- c("Coefficients")
+
+# number of predictors
+p.se <- sum(abs(lasso.coef$Coefficients)>0)-1  #remove intercept
+
+# coefficients different from zero 
+subset.data.frame(lasso.coef, abs(Coefficients)>0)
+```
+
+LASSO regression with $\lambda$.1se results in a simpler model with 21 variables.
+
+We test the model with $\lambda$.min
+
+```{r}
+# prediction on test set
+Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
+
+n <- dim(X.test)[1]
+p <- p.min
+
+rss <- sum((Y.test - Y.hat)^2)             # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test))^2)       # Explained Sum of Squares
+tss <- ess + rss                           # Total Sum of Squares
+r2 <- 1 - rss/tss                          # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+
+mse <- rss/n                               #Mean Squared Error
+cat("MSE: ", round(mse,2), "\n")
+cat("adjR^2: ", round(adjr2,2), "\n")
+```
 
 ## Principal Component Analysis
 
@@ -1252,132 +1443,6 @@ p <- 11
 pcr.pred = predict(pcr.fit, X.test, ncomp=11)
 rss <- sum((Y.test - pcr.pred)^2)          # Residual Sum of Squares
 ess <- sum((pcr.pred - mean(Y.test))^2)    # Explained Sum of Squares
-tss <- ess + rss                           # Total Sum of Squares
-r2 <- 1 - rss/tss                          # R Squared statistic
-adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
-
-mse <- rss/n                               #Mean Squared Error
-cat("MSE: ", round(mse,2), "\n")
-cat("adjR^2: ", round(adjr2,2), "\n")
-```
-
-
-
-## Shrinkage methods
-
-```{r}
-# Convert dataframes to matrixes
-X.train <- as.matrix(X.train)
-X.test <- as.matrix(X.test)
-Y.train <- as.matrix(Y.train)
-Y.test <- as.matrix(Y.test)
-```
-
-### Ridge Regression with Cross-Validation
-```{r}
-# Lambda values to try
-lambda.val <- 10^seq(3, -3, length=100)
-
-# Ridge-Regression with 10-fold cross-validation on training set to choose lambda
-ridge.mod.cv <- cv.glmnet(X.train, Y.train, alpha=0,
-                          lambda=lambda.val, nfolds = 10)
-plot(ridge.mod.cv)
-```
-
-```{r}
-# Best cross-validated lambda
-lam.min <- ridge.mod.cv$lambda.min
-lam.1se <- ridge.mod.cv$lambda.1se
-```
-
-```{r}
-# Ridge-Regression on the entire train set
-ridge.mod <- glmnet(X.train, Y.train , alpha=0, lambda=lambda.val)
-plot(ridge.mod, xvar = "lambda")
-abline(v=log(lam.min), lty=2, col=1)
-abline(v=log(lam.1se), lty=2, col=2)
-legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
-```
-```{r}
-
-ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
-ridge.coef <- as.data.frame(ridge.coef)
-colnames(ridge.coef) <- c("Coefficients")
-
-# number of predictors
-sum(abs(ridge.coef$Coefficients)>10^(-16))-1 #remove intercept
-
-# Most relevant predictors
-subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
-```
-
-```{r}
-# Prediction on test set
-Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
-
-n <- 400
-p <- 52
-
-rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
-ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
-tss <- ess + rss                           # Total Sum of Squares
-r2 <- 1 - rss/tss                          # R Squared statistic
-adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
-
-mse <- rss/n                               #Mean Squared Error
-cat("MSE: ", round(mse,2), "\n")
-cat("adjR^2: ", round(adjr2,2), "\n")
-```
-
-
-
-### Lasso Regression with Cross-Validation
-```{r}
-# Lambda values to try
-lambda.val <- 10^seq(3, -3, length=100)
-
-# Lasso-Regression with 10-fold cross-validation on training set to choose lambda
-lasso.mod.cv <- cv.glmnet(X.train, Y.train, alpha=1,
-                          lambda=lambda.val, nfolds = 10)
-plot(lasso.mod.cv)
-```
-
-```{r}
-# Best cross-validated lambda
-lam.min <- lasso.mod.cv$lambda.min
-lam.1se <- lasso.mod.cv$lambda.1se
-```
-
-```{r}
-# Ridge-Regression on the entire train set
-lasso.mod <- glmnet(X.train, Y.train , alpha=1, lambda=lambda.val)
-plot(lasso.mod, xvar = "lambda")
-abline(v=log(lam.min), lty=2, col=1)
-abline(v=log(lam.1se), lty=2, col=2)
-legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
-```
-
-```{r}
-lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
-lasso.coef <- as.data.frame(lasso.coef)
-colnames(lasso.coef) <- c("Coefficients")
-
-# number of predictors
-sum(abs(lasso.coef$Coefficients)>10^(-16))-1 #remove intercept
-
-# Most relevant predictors
-subset.data.frame(lasso.coef, abs(Coefficients)>0)
-```
-
-```{r}
-# Prediction on test set
-Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
-
-n <- 400
-p <- 48
-
-rss <- sum((Y.test - Y.hat)^2)       # Residual Sum of Squares
-ess <- sum((Y.hat - mean(Y.test))^2) # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
