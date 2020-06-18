@@ -820,14 +820,11 @@ of the predictors.
 
 #### Correlation insight
 
-In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
+In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless. It would have been possible to use a simple for loop or an *ad hoc* package, such as *caret*, to filter out some of the most correlated columns to clean up and resize the dataset, but due to the possibly problematic interactions among variables we talked above about, we preferred to follow a more guided path. In the analysis just the numerical predicting variables and the two main target variables are kept, to highlight eventual correlation-related issues.
 
-
-
-[***Alfre scelgo teeeeee***]
 ```{r}
 # restrict to the predictive numeric attributes
-coltodrop <- c(1,2, seq(103,120))
+coltodrop <- c(1,2, seq(103,118))
 corrdf <- cleandf[,-coltodrop]
 
 # correlation matrix
@@ -838,8 +835,8 @@ par(mfrow=c(1,2))
 # correlation matrix plot
 corrplot(cm,title='Initial correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
 
-# correlation tradeoff
-threshold <- 0.7
+# correlation thrashold
+threshold <- 0.8
 # only strongly correlated attributes highlighted
 cma <- abs(cm) > threshold
 # number of strong correlations
@@ -851,10 +848,30 @@ corrplot(cma,title='Filtered correlation matrix', method='color', type='lower', 
 par(mfrow=c(1,1))
 ```
 
-??? Spiega le scelte e soprattutto quella a 0.7!
+```{r}
+# correlation tradeoff
+threshold <- 0.55
+# only strongly correlated attributes
+cma <- abs(cm) > threshold
+# strongly correlated attributes to "ViolentCrimesPerPop"
+names(cma[101,][cma[101,]])
+```
+
+With a threshold of 0.8 no response variable is significanly correlated to any predictor, while at 0.7 "PctKids2Par" and "PctKidsBornNeverMar" appear to be correlated to "ViolentCrimesPerPop". Only when we lower it to 0.55, due to the mutual correlation between the previously mantioned predictors and the new ones, cultural factors show up, highlighting a probable confounding effect hidden between the variables. It is in fact kindly that, in case of non-American-born people, due to law differences between states and logistic problems, a huge number of such families results in analogous conditions to the ones actually without at least one parent, which is a leading condition among the ones positively correlated to the response.
+
+With this in mind, thanks to the following few lines of code, we handle the more correlated variables, trying, at the same time, to preserve as many columns as possible to preserve the original structure of our dataset.
+
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
+We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
+Some relevant examples of columns dropped in the resulting process are:
+* "population", due to the presence of both absolute and percent measurement of many variables;
+* "agePct16t24" and other redundant columns computed on overlapping time periods;
+* "OwnOccHiQuart" and other statistics strictly related to other ones (such as the median).
 
 ```{r}
 # columns with correlation with more meaningful ones higher than threshold in absolute value
+
+threshold <- 0.8
 
 rem9 <- c( 
 "population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",
@@ -887,34 +904,13 @@ par(mfrow=c(1,1))
 # resulting filtered correlation matrix plot
 corrplot(cma_ind, title='Filtered correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
-# 0.9
-# OK perCapInc del. vs whitePerCap (21 del. vs 22, use average)
-# OK PctBSorMore kept vs PctOccupMgmtProf (32 kept vs 38, solved by 0.8)
-# OK NumKidsBornNeverMar del. vs NumImmig (50 del. vs 52, solved by 0.8)
-# 0.8
-# OK racepvtblack vs racePctWhite (3 kept vs 4, let's keep minorities)
-# OK agePct12t21 kept vs agePct12t29 (7 kept vs 8, solved by 0.7)
-# OK medIncome del. vs whitePerCap (13 del. vs 22, use average)
-# OK pctWPubAsst del. vs PctUnemployed (18 del. vs 33, solved by 0.7)
-# OK PctPopUnderPov del. vs PctHousNoPhone (29 del. vs 78, solved by 0.7)
-# OK PctYoungKids2Par del. vs PctTeen2Par (46 del. vs 47, solved by 0.7)
-# OK PctWorkMomYoungKids kept vs PctWorkMom (48 kept vs 49, unanimity)
-# OK PctImmigRecent kept vs PctImmigRec8 (53 kept vs 55)
-# OK PctSameHouse85 kept vs PctSameCity85 (94 kept vs 95, more informative)
-# 0.7
-# OK NumImmig and HousVacant (52 and 72, unanimity)
-
 # final correlation matrix plot
 corrplot(cm_ind, title='Final correlation matrix', method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
 par(mfrow=c(1,1))
 ```
 
-
-
-When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
-We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
-
+Let's now fit a linear model on the new obtained dataframe to see how it performs.
 
 ```{r}
 corrdf <- df[,!(colnames(df) %in% rem8)]
