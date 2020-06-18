@@ -297,7 +297,7 @@ plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
   theme(legend.position = "right")
 ```
 
-We can notice that the states with the highest average violent crimes rate are mostly located in the southeast. Moreover, the summary and the geographical plot suggest the presence of some outlier in the averages.
+We can notice that the states with the highest average violent crimes rate are mostly located in the south-east. Moreover, the summary and the geographical plot suggest the presence of some outlier in the averages.
 
 ```{r, fig.width=16, fig.height=5}
 barplot(vc_state$ViolentCrimesMean, names.arg = vc_state$state, las=2, col=Col[1],
