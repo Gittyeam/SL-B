@@ -1191,7 +1191,7 @@ Y.train <- as.matrix(Y.train)
 Y.test <- as.matrix(Y.test)
 ```
 
-### Ridge Regression with Cross-Validation
+### Ridge Regression with Cross-Validation[I]
 
 In RIDGE regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}\beta_j^2$.
 In order to determine the best value of the regularization parameter we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
@@ -1277,7 +1277,7 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 
-### Lasso Regression with Cross-Validation
+### Lasso Regression with Cross-Validation[II]
 
 In LASSO regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}|\beta_j|)$.
 In order to determine the best value of the regularization parameter we use the same approach as before and we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
@@ -1369,7 +1369,7 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-## Principal Component Analysis
+## Principal Component Analysis[III]
 
 To gather the most information possible in relatively few columns we implemented the Principal Component Analysis.
 In particular the strength of this method resides in the fact that, starting from a variance maximization unconstrained problem,
@@ -1716,7 +1716,7 @@ mean(logistic.pred==YF.test)
 
 With this choice of the probability threshold, the model achieves good sensitivity and specificity and an accuracy on the test set of 85%.
 
-### KNN
+### KNN[IV]
 
 Finally we improved a completely non-parametric and non-linear approach: KNN. In this method no assumptions are made about the shape of the decision boundary, moreover differently from LDA or QDA, normality condition of the predictors are not necessary.
 
@@ -1753,14 +1753,27 @@ mean(knn.pred==YF.test)
 
 # Conclusions - Comparing results
 
-Siamo stati bravi Rover, guarda che bei grafici.. (oh no) ???
+
+
 
 # Technical appendix
 
-## 
-## 
-## 
-## 
+## [I] Ridge
+
+
+
+## [II] Lasso
+
+
+
+## [III] PCA
+
+
+
+## [IV] KNN
+
+
+
 
 # References
 
