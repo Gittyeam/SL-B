@@ -706,3 +706,22 @@ mean(logistic.pred==corrdf$ViolentCrimesPerPop)
 at what rate?)
   same for PctBornSameState & PctSame(...)
 * PctRec(...): same but over the full population
+
+```{r}
+# 0.9
+# OK perCapInc del. vs whitePerCap (21 del. vs 22, use average)
+# OK PctBSorMore kept vs PctOccupMgmtProf (32 kept vs 38, solved by 0.8)
+# OK NumKidsBornNeverMar del. vs NumImmig (50 del. vs 52, solved by 0.8)
+# 0.8
+# OK racepvtblack vs racePctWhite (3 kept vs 4, let's keep minorities)
+# OK agePct12t21 kept vs agePct12t29 (7 kept vs 8, solved by 0.7)
+# OK medIncome del. vs whitePerCap (13 del. vs 22, use average)
+# OK pctWPubAsst del. vs PctUnemployed (18 del. vs 33, solved by 0.7)
+# OK PctPopUnderPov del. vs PctHousNoPhone (29 del. vs 78, solved by 0.7)
+# OK PctYoungKids2Par del. vs PctTeen2Par (46 del. vs 47, solved by 0.7)
+# OK PctWorkMomYoungKids kept vs PctWorkMom (48 kept vs 49, unanimity)
+# OK PctImmigRecent kept vs PctImmigRec8 (53 kept vs 55)
+# OK PctSameHouse85 kept vs PctSameCity85 (94 kept vs 95, more informative)
+# 0.7
+# OK NumImmig and HousVacant (52 and 72, unanimity)
+```
