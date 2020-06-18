@@ -487,17 +487,18 @@ rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf", "Col", Rgb)))
 
 # Multiple linear regression
 
-response = ViolentCrimesPerPop (forcing the assumpition of equal mean between state t)
+For almost the entire project, we decided to focus the analyzes on the ViolentCrimePerPop variable only, i.e. the rate of the sum of the violent crimes, according to the US laws, per population.
+In particular our main task is to predict this response from the socio-economic and demographic attributes per community provided by the dataset using a multiple linear regression model.
 
-Remove non predictive variables:
-communityname, state, all crimes except variable ViolentCrimesPerPop
+For this purpose, we firstly remove non predictive variables, such as the community name and all the other crimes columns except for the ViolentCrimesPerPop response. Note that in this first study we also discarded the categorical attribute state, assuming it as not influential.
+
 ```{r}
 coltodrop <- c(1,2, seq(103,120)[-17]) # -17 keeps ViolentCrimesPerPop
 
 df <- standf[,-coltodrop]
 ```
 
-Multiple Linear Regression
+We then fit our multiple linear regression model and show statistics and plot about the residuals.
 ```{r}
 reg.out <- lm(ViolentCrimesPerPop~., data=df)
 ```
@@ -517,22 +518,25 @@ plot(reg.out)
 par(mfrow=c(1,1))
 ```
 
+To analyze in detail the results obtained from this first simple model, we recall the necessary theoretical assumptions that must be verified.
+
 ## Assessing Model Assumptions:
 The model assumptions are:
 
 - Linearity of the response-predictor relationships;
-- Homeschedasticity: Var($\epsilon_i$) = $\sigma^2$;
-- Normality and Independence of $\epsilon_i$.
+- Homeschedasticity of the error terms: Var($\epsilon_i$) = $\sigma^2$;
+- Normality and Independence of the error terms $\epsilon_i$.
+
+To check the conditions listed above we use the residual plots provided by lm.
 
 ### Linearity
-The plots of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in
-the data. (e ci dice che gli errori sono non correlati :))
+The plot of residuals versus fitted values shows a little pattern, however it seems to indicate that there are linear associations in the data and that the errors are uncorrelated. 
 
 ### Homoschedasticity
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
 solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
-
+With a trial and error approach we came out with the best transformation: $\log(Y)+1$, the following figures give empirical proof of the positive effect given by the chosen function.
 
 
 ```{r}
@@ -574,6 +578,7 @@ par(mfrow=c(1,1))
 
 ```
 
+At this point we fitted again the linear model using the transformed response.
 
 ```{r}
 reg.out2 <- lm(log(ViolentCrimesPerPop+1)~., data=df)
@@ -594,23 +599,20 @@ plot(reg.out2)
 par(mfrow=c(1,1))
 ```
 
-The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity.
-
+The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity, moreover it managed to considerably improve the statistic measures.
 
 ### Normality and Independence of errors
-We assess normality looking to the QQplot....
+Finally, the only hypothesis left to check is the normality. We can assess this condition looking to the QQ plot: most of the points seem to coincide with the theoretical line, the only exceptions are those at the ends which reveal a distribution with heavier tails. This effect could be motivated by other problems, such as outliers, as shown below.
 
 
 ## Other Possible Problems
 
 ### Outliers
-The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider
-the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
+The residual plot identifies some outliers. However, it can be difficult to decide how large a residual needs to be before we consider the point to be an outlier. To address this problem, instead of plotting the residuals, we can plot the studentized residuals, computed
 by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in
 absolute value are possible outliers.
 
-Note: Why 3? The Studentized Residuals are approximated by a N(0,1).
-The probability to observe a value greater than 3 is 0.001349898. [ref biblio? Per me sì (Alfredo)]
+Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898. [ref biblio?].
 
 ```{r}
 1 - pnorm(3)
@@ -622,7 +624,8 @@ plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Stude
 abline(h=3, col = "red")
 abline(h=-3, col = "red")
 ```
-Explore and interpret city of outliers...? (dell'est strano.. commenta)
+
+
 
 ```{r}
 out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
@@ -650,6 +653,7 @@ citycord<-merge(citycord,cleandf,by=c("state","communityname"))
 dfplot <- citycord[citycord$communityname %in% cityout, c("lon","lat","ViolentCrimesPerPop","communityname")]
 ```
 
+Using this selection criterion, 20 communities are to be considered outliers. In a study like the one we are conducting, in which socio-economic, environmental and demographic information is fundamental, it might be interesting to investigate where these cities are located geographically. The following map shows the outliers communities with respect the ViolentCrimesPerPop variable. It can be noticed that the large majiority are clusterized in the state of NY and in the southern regions.
 
 ```{r}
 
@@ -686,6 +690,7 @@ plot_usmap(fill = "#06D6A0", alpha = 0.25) +
 ```
 
 
+The results of the linear regressor fitted without the outliers are shown below.
 ```{r}
 # regression without outliers
 reg.out3 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% out),])
@@ -706,14 +711,11 @@ plot(reg.out3)
 par(mfrow=c(1,1))
 ```
 
-The RSE is 0.56 when the outlier is included in the regression and it is 0.52 when the outlier is removed. Since the RSE is used to
-compute all confidence intervals and p-values, this can have implications for the interpretation of the fit. Moreover, dropping the
-outliers the $R^2$ increses from 0.67 to 0.7. [??? A me vengono 0.68 e 0.71, da ricontrollare alla fine]
-Care should be taken in the decision of taking or dropping outliers.
+As expected, the RSE is smaller: 0.56 when the outliers are included versus 0.52 when they are removed. Nevertheless, since the RSE is used to compute all confidence intervals and p-values, this can have implications for the interpretation of the fit, as usual then, care should be taken in the decision of taking or dropping outliers.
+For the purpose of this work we have decided not to remove them, not only to avoid the risk of losing statistical information, but because they seem to have a geographical meaning and dropping them could make the study less consistent.
 
 ### High Leverage Points
-In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that
-greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
 
 ```{r}
 hv <- hatvalues(reg.out2)
@@ -724,9 +726,7 @@ n <- dim(df)[1]
 abline(v=(p+1)/n, col = "red")
 ```
 
-
-Try removing high leverage points [ref biblio]
-explore city state leverage interpret?
+The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above 3(p+1)/n [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
 
 ```{r}
 lev <- names(hv[hv>3*(p+1)/n])
@@ -774,6 +774,10 @@ plot_usmap(fill = "#f26b8b", alpha = 0.23) +
 
 ```
 
+It is interesting to note that these cities belong in many cases to the most populous states in the US such as NY, CA, NJ, PA, TX, FL or to the the least inhabited such as AK and UT. Moreover, as for the outliers, the large majiority of them are clusterized in particular regions or states (CA, NY, NJ).
+
+
+The results of the linear regressor fitted without the high leverage points are shown below.
 ```{r}
 # regression without leverage points
 reg.out4 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% lev),])
@@ -792,28 +796,22 @@ plot(reg.out4)
 par(mfrow=c(1,1))
 ```
 
-Con questo cut non sembra esserci molta differenza... ma RSE diminuisce di qualche millesimo.. 
-e togliamo solo 56 righe... leggo dalla source sopra la seguente...:
-a high leverage observation may or may not actually be influential, a data point has large influence only if it affects the estimated
-regression function.. potrebbe essere una buona notizia :)
+The removal of these problematic points does not seem to significantly change the model. As a matter of fact, the RSE remains the same, while the adjusted $R^2$ decreases. Taking everything into account, we decided to keep these rows of the dataset avoiding to lose information.
 
 
 
+### Collinearity
 
-### Collinearity 
-Collinearity refers to the situation in which two or more predictor variables
-collinearity
+Finally, a possible problem, in particular dealing with a large number of variables as in our case, is that of collinearity. It refers to the situation in which two or more predictor variables
 are closely related to one another. The presence of collinearity can pose problems in
 the regression context, since it can be difficult to separate out the individual effects of collinear variables on the response.
 
-Since collinearity reduces the accuracy of the estimates of the regression
+In addition, since collinearity reduces the accuracy of the estimates of the regression
 coefficients, it causes the standard error for $\hat \beta_j$ to grow. Recall that the
 t-statistic for each predictor is calculated by dividing $\hat \beta_j$ by its standard
 error. Consequently, collinearity results in a decline in the t-statistic. As a
 result, in the presence of collinearity, we may fail to reject $H_0:\ \beta_j = 0$. This
-means that the power of the hypothesis test-the probability of correctly
-power
-detecting a non-zero coefficient-is reduced by collinearity. 
+means that the power of the hypothesis test is reduced by collinearity. 
 
 To avoid such a situation, it is desirable to identify and address potential
 collinearity problems while fitting the model.
@@ -822,9 +820,11 @@ of the predictors.
 
 #### Correlation insight
 
-In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most
-correlated ones, the more redundant and meaningless.
+In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
 
+
+
+[***Alfre scelgo teeeeee***]
 ```{r}
 # restrict to the predictive numeric attributes
 coltodrop <- c(1,2, seq(103,120))
@@ -912,13 +912,8 @@ par(mfrow=c(1,1))
 
 
 
-When faced with the problem of collinearity, there are two simple solutions.
-The first is to drop one of the problematic variables from the regression. 
-This can usually be done without much compromise to the regression
-fit, since the presence of collinearity implies that the information that this
-variable provides about the response is redundant in the presence of the
-other variables. The second solution is
-to combine the collinear variables together into a single predictor.
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
+We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
 
 
 ```{r}
@@ -940,14 +935,15 @@ par(mfrow=c(2,2))
 plot(reg.out5)
 par(mfrow=c(1,1))
 ```
-It is possible to notice that the model performs slightly worse than the previous one, both looking at the RSE and the adjusted $R^2$ but the dimensionality of the problem has been reduced of the 55%, and we still have other trump cards to improve it's effectiveness.
+It is possible to notice that the model fitted from the remained 52 predictors performs better than the model obtained with all the 100 ones: the RSE decreases from 0.59 to 0.58 while the adjusted $R^2$ increases from 0.65 to 0.66. This demonstrates the importance of careful analysis of the collinearity problem, eliminating redundant information not only simplifies the model, but makes it more robust.
+
+From this point on, only the 52 variables selected in this section will be considered for the rest of the study.
 
 
 ```{r, include=FALSE}
 # Remove all variables from environment excpet the cleaned and the original dataset
 rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf","Col")))
 ```
-
 
 # Variables selection
 
