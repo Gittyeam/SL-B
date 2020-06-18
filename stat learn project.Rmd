@@ -1185,7 +1185,10 @@ These greedy algorithms managed in few seconds to achieve quality solutions in t
 
 ## Principal Component Analysis
 
-
+To gather the most information possible in relatively few columns we implemented the Principal Component Analysis.
+In particular the strength of this method resides in the fact that, starting from a variance maximization unconstrained problem,
+we go on selecting orthogonal components given by proper linear combinations of the original columns,
+both scaling the dimensionality of the problem and mitigating the effects related to the covariance between the original variables.
 ```{r}
 # PCA computation
 pc <- princomp(X) # cor=TRUE to obtain it from the correlation matrix
@@ -1222,11 +1225,14 @@ fviz_pca_var(pc,
              select.var = list(contrib = 15)
              )
 ```
-Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor.
+The principal limitation of PCA concerns interpretation, but it is possible to explore the resulting loadings to
+hopefully extrapolate the semantic area of the main components in each principal direction.
+Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), for example, it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor. As for the second one, the geo-cultural factors. ??? Razzismoooo scritto in modo elegante o tolgo?
 
 
 ### PC regression
 
+At this point we use a 10-fold cross validation on the training set to select the best tradeoff between the number of columns to drop and the performance of the model.
 ```{r, include=FALSE}
 # install.packages("pls")
 library(pls)
@@ -1241,7 +1247,8 @@ validationplot(pcr.fit, val.type = "MSEP")
 validationplot(pcr.fit, val.type = "R2")
 # looking at the plot, 12 could be a great choice
 ```
-A great tradeoff is to train a model using the first 12 principal components.
+
+It shows up that great tradeoff is to train the final model using the first 12 principal components, and in this way we're able to reach a slightly better accuracy than the previous models, still keepeng low the dimension of the used dataset.
 ```{r}
 # prediction in the model above
 n <- 400
