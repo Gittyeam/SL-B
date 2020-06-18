@@ -458,8 +458,8 @@ caucasian.corr <- viol.cm[,4]
 sort(caucasian.corr[abs(caucasian.corr)>0.5])
 ```
 
-This could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence.
-
+The above considerations could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence, or, on the other hand, they could highlight the presence of the well known, but always tricky, confounding effect, about which we'll go into details below.
+Along with that, another fundamental factor has to be considered: a pretty famous social phenomenon, known as the *crack epidemic*, took place in the USA during the past 80s and 90s, period in which our data have been gathered. Shortly speaking, faced with dropping prices of cocaine powder, drug dealers made a decision to convert it to "crack", a solid smokeable form of cocaine, that could be sold in smaller quantities, to more people. It was cheap, simple to produce, ready to use, and highly profitable for dealers to develop, which made the new product spread rapidly and made the homicide rate for young black males more than doubled, due to the fact that the distribution of the drug to the end-user occurred mainly in low-income inner city neighborhoods: this gave many inner-city residents the opportunity to move up the "economic ladder" in a drug market, at the cost of violence to establish territorial control. Moreover, this habits caused a long term effect in the society, estending the phenomenon over its actual time period. [cite wikipedia? The articles cited in Wikipedia? *The New Jim Crow: Mass Incarceration in the Age of Colorblindness*?]
 
 We carry now the same analysis in order to understand which variables are more correlated (correlation>0.5) with the variable of non violent crimes.
 
@@ -857,7 +857,7 @@ cma <- abs(cm) > threshold
 names(cma[101,][cma[101,]])
 ```
 
-With a threshold of 0.8 no response variable is significanly correlated to any predictor, while at 0.7 "PctKids2Par" and "PctKidsBornNeverMar" appear to be correlated to "ViolentCrimesPerPop". Only when we lower it to 0.55, due to the mutual correlation between the previously mantioned predictors and the new ones, cultural factors show up, highlighting a probable confounding effect hidden between the variables. It is in fact kindly that, in case of non-American-born people, due to law differences between states and logistic problems, a huge number of such families results in analogous conditions to the ones actually without at least one parent, which is a leading condition among the ones positively correlated to the response.
+With a threshold of 0.8 no response variable is significanly correlated to any predictor, while at 0.7 "PctKids2Par" and "PctKidsBornNeverMar" appear to be correlated to "ViolentCrimesPerPop". Only when we lower it to 0.55, due to the mutual correlation between the previously mantioned predictors and the new ones, socio-cultural factors show up, highlighting a probable confounding effect hidden between the variables. It is in fact kindly that, in case of non-American-born people, due to law differences between states and logistic problems, a huge number of such families results in analogous conditions to the ones actually without at least one parent, which is a leading condition among the ones positively correlated to the response.
 
 With this in mind, thanks to the following few lines of code, we handle the more correlated variables, trying, at the same time, to preserve as many columns as possible to preserve the original structure of our dataset.
 
