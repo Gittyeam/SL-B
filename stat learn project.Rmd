@@ -1797,23 +1797,35 @@ To read more about the Mean Squared Logarithmic Error, see [9].
 
 ## [II] Ridge
 
-
-To read more about Ridge regression, see [1], 215-216.
+Ridge regression is pretty similar to the MLR, except that the coefficients
+are not estimated by minimizing the usual $RSS=\sum_{i=1}^n (y_i-\beta_0-\sum_{j=1}^p\beta_j x_{ij})^2$
+but the modified expression $RSS+\lambda\sum_{j=1}^p\beta_j^2$ where $\lambda\geq0$ can be tuned in order
+to *shrink* the estimates of the $\beta_i$ (but not the intercept!) to 0.
+To read more about Ridge regression, see [1], 215.
 
 ## [III] Lasso
 
-
-To read more about LASSO regression, see [1], .
+The lasso is an alternative to the Ridge regression that takes into account its main disadvantage:
+Ridge regression, in fact, shrinks all the coefficients towards 0 never pulling them down to actually 0.
+The only difference for the Lasso is the choice of an $L^1$ normalization function, which is known by theory
+to be a **sparse metric**, allowing the method to perform an automatic variable selection.
+To read more about LASSO regression, see [1], 219.
 
 ## [IV] PCA
 
+PCA is a technique for reducing the dimension of a n×p data matrix X.
+In our case, we apply it to our dataframe matrix, in order to perform, somehow, a variable selection.
+Somehow in the sense that the variables are not just selected, but linearly combined in new ones which
+are chosen orthogonal and sorted by the variance of the model they can explain, assuming it as a synonym of information.
+The first principal component direction, in particular, is that along which the observations vary the most,
+and so are the next ones among the left orthogonal directions left.
+To read more about the linear algebra involved in the PCA, see [10].
 
-To read more about PCA, see [1], .
+## [V] K-Nearest Neighbors classifier
 
-## [V] KNN
-
-
-To read more about KNN, see [1], .
+A KNN is a non-parametric and non-linear method which offers a good alternative when linear models are not suitable.
+In KNN classification, the output is a class membership. An object is assigned to the class most common among its K nearest neighbors, where K is a positive integer. Note that the results is strongly local, because it just depends on the nearest K training instances to the target point.
+To read more about KNN, see [1], 39.
 
 
 # References
@@ -1827,3 +1839,4 @@ To read more about KNN, see [1], .
 [7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized.
 [8] https://online.stat.psu.edu/stat462/node/171/.
 [9] https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
+[10] https://towardsdatascience.com/the-mathematics-behind-principal-component-analysis-fff2d7f4b643
