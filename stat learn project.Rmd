@@ -1796,7 +1796,7 @@ The logarithmic transformation $\tilde y = \log(y+1)$ applied to the target vari
 only cares about the percentual difference between the true and the predicted values. Moreover, in our case we don’t want large errors to be significantly more penalized than small ones, due to the presence of cities with significantly high values with respect to the mean making the range of the target value large.
 To read more about the Mean Squared Logarithmic Error, see [9].
 
-## [II] Ridge
+## [II] Ridge regression
 
 Ridge regression is pretty similar to the MLR, except that the coefficients
 are not estimated by minimizing the usual $RSS=\sum_{i=1}^n (y_i-\beta_0-\sum_{j=1}^p\beta_j x_{ij})^2$
@@ -1812,7 +1812,7 @@ The only difference for the Lasso is the choice of an $L^1$ normalization functi
 to be a **sparse metric**, allowing the method to perform an automatic variable selection.
 To read more about LASSO regression, see [1], 219.
 
-## [IV] PCA
+## [IV] Principal Component Analysis
 
 PCA is a technique for reducing the dimension of a n×p data matrix X.
 In our case, we apply it to our dataframe matrix, in order to perform, somehow, a variable selection.
