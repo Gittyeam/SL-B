@@ -1836,8 +1836,8 @@ To read more about KNN, see [1], 39.
 [3] "Guns and Violence: The Enduring Impact of Crack Cocaine Markets on Young Black Males", W.N. Evans, G. Garthwaite, T. Moore, 2018.
 [4] "Measuring Crack Cocaine and Its Impact", Fryer, Roland. Harvard University Society of Fellows: 3, 66. Retrieved January 4, 2016.
 [5] "The New Jim Crow: Mass Incarceration in the Age of Colorblindness", M. Alexander.
-[6] http://www.disastercenter.com/crime/uscrime.htm.
-[7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized.
+[6] http://www.disastercenter.com/crime/uscrime.htm
+[7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
 [8] https://online.stat.psu.edu/stat462/node/171/.
 [9] https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
 [10] https://towardsdatascience.com/the-mathematics-behind-principal-component-analysis-fff2d7f4b643
