@@ -1753,7 +1753,38 @@ mean(knn.pred==YF.test)
 
 # Conclusions - Comparing results
 
+Let's have a brief recap and see what we have learned.
+We started with an overall exploration of the dataset, handling, in the meanwhile,
+null and corrupt data, and choosing as interesting to predict among the others
+the proportion of violent crimes per 100K population.
+At this point we investigated the reletions between our target variable
+and the rest of the dataset, achieving the first meaningful result: the extraction,
+via EDA before and different statistical tools after,
+of a few topics which mainly determine the output of the models.
+In particular, the most significant clusters are identified, in descending influence order,
+by the family structure, the marital status, the economic status and the ethnicity
+of the population of each city.
+We then applied a multiple linear regression, and increasingly improved it checking for outliers,
+high leverage points, collinearity issues, and testing all kinds of variable selection methods
+comparing them and eventually cumulating the obtained results.
+We furthermore evaluated the influence of the categorical variable "state" on the prediction
+with ANOVA, Tukey's test and ANCOVA and we built a multiple responses L.R. to check how it would perform.
+At the end, for the sake of curiosity, we built two binary classification models, giving a threshold
+to split "ViolentCrimesPerPop" in the "High" and "Low" classes: a classical logistic regrassion and a KNN
+to test a non-linear and non-parametric approach.
 
+As for the effectiveness of the model, it turned out that the binary classifiers have a rewarding accuracy of 80-85%,
+while the regression models reach barely sufficient results: even with a valuable adjusted $R^2$ of ???, the logarithmic
+tranformation applied to the target variable led us to compute a MSLE of 0.???, which says that the average ratio between the
+predicted value +1 and the true value +1 is ???. This is mainly due to the fact that a linear model (and in general a polinomial one,
+which gave similar results), is not enough to fit the complexity of the data, as we expected given the complexity of the task even
+from a social perspective. Furthermore, a huge limitation was the really poor quality of the LEMAS dataset,
+the one gathered from the police departments, and this didn't allowed us to perform a parallel study to investigate a more local point of view.
+
+At the end of the story, we tried to apply our knowledge in statistical learning to reach a satisfying level of comprehension
+of our data and the structures behind them, realizing that this is a task that goes beyond the concatenation of mathematical models,
+involving creativity, newness and dedication. The Communities and Crime data set has been a challenge for us, and only now that we know more
+about the data and the questions they may hide, we can eventually afford to apply deep learning models to see if the results can be improved.
 
 
 # Technical appendix
