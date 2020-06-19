@@ -1800,7 +1800,7 @@ To read more about the Mean Squared Logarithmic Error, see [9].
 
 Ridge regression is pretty similar to the MLR, except that the coefficients
 are not estimated by minimizing the usual $RSS=\sum_{i=1}^n (y_i-\beta_0-\sum_{j=1}^p\beta_j x_{ij})^2$
-but the modified expression $RSS+\lambda\sum_{j=1}^p\beta_j^2$ where $\lambda\geq0$ can be tuned in order
+but the modified expression $RSS+\lambda\sum_{j=1}^p\beta_j^2$ where $\lambda\geq 0$ can be tuned in order
 to *shrink* the estimates of the $\beta_i$ (but not the intercept!) to 0.
 To read more about Ridge regression, see [1], 215.
 
@@ -1825,7 +1825,7 @@ To read more about the linear algebra involved in the PCA, see [10].
 ## [V] K-Nearest Neighbors classifier
 
 A KNN is a non-parametric and non-linear method which offers a good alternative when linear models are not suitable.
-In KNN classification, the output is a class membership. An object is assigned to the class most common among its K nearest neighbors, where K is a positive integer. Note that the results is strongly local, because it just depends on the nearest K training instances to the target point.
+In KNN classification, the output is a class membership. An object is assigned to the most common class among its K nearest neighbors, where K is a positive integer. Note that the results is strongly local, because it just depends on the nearest K training instances to the target point.
 To read more about KNN, see [1], 39.
 
 
