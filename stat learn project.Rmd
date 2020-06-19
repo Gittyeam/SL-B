@@ -535,7 +535,7 @@ The plot of residuals versus fitted values shows a little pattern, however it se
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
 solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
 
-With a trial and error approach we came out with the best transformation: $\log(Y)+1$, of which the resulting density is shown the following figures.
+With a trial and error approach we came out with the best transformation: $\log(Y)+1$, of which the resulting density is shown the following figures[I].
 
 
 ```{r}
@@ -987,7 +987,7 @@ tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1048,12 +1048,12 @@ plot(regfit.full,scale="bic")
 Finally, the best models selected according to $C_p$, BIC and adjusted $R^2$ the are then tested.
 ```{r}
 # predict with adjR2 best
-coef<-coef(regfit.full,mad) #coeff of the best model suggested by adjR2
+coef <- coef(regfit.full,mad) #coeff of the best model suggested by adjR2
 
 #best subsect of var
 as.data.frame(coef)
 
-advar<-names(coef)[-1]
+advar <- names(coef)[-1]
 
 n <- dim(X.test)[1]
 p <- mad
@@ -1064,7 +1064,7 @@ tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1191,7 +1191,7 @@ Y.train <- as.matrix(Y.train)
 Y.test <- as.matrix(Y.test)
 ```
 
-### Ridge Regression with Cross-Validation[I]
+### Ridge Regression with Cross-Validation[II]
 
 In RIDGE regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}\beta_j^2$.
 In order to determine the best value of the regularization parameter we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
@@ -1277,7 +1277,7 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 
-### Lasso Regression with Cross-Validation[II]
+### Lasso Regression with Cross-Validation[III]
 
 In LASSO regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}|\beta_j|)$.
 In order to determine the best value of the regularization parameter we use the same approach as before and we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
@@ -1369,7 +1369,7 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-## Principal Component Analysis[III]
+## Principal Component Analysis[IV]
 
 To gather the most information possible in relatively few columns we implemented the Principal Component Analysis.
 In particular the strength of this method resides in the fact that, starting from a variance maximization unconstrained problem,
@@ -1459,7 +1459,7 @@ In this section other models have been tested for the prediction of the violent 
 ## Add categorical predictor
 
 Until now we assumed that the response variable ViolentCrimesPerPop has equal behaviour between the different states. Even if in practice this assumption considerably simplified the model, the hypothesis of similar distribution between different cities belonging to a vast territory such as the American one, characterized by a wide variety of geographic, cultural and social conditions, could be a too strong request.
-Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the standardized and log transformed version of the data). The horizontal line draws the mean value between all data without distinction.
+Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the standardized and log-transformed version of the data). The horizontal line draws the mean value between all data without distinction.
 
 ```{r}
 boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= Col)
@@ -1716,7 +1716,7 @@ mean(logistic.pred==YF.test)
 
 With this choice of the probability threshold, the model achieves good sensitivity and specificity and an accuracy on the test set of 85%.
 
-### KNN[IV]
+### KNN[V]
 
 Finally we improved a completely non-parametric and non-linear approach: KNN. In this method no assumptions are made about the shape of the decision boundary, moreover differently from LDA or QDA, normality condition of the predictors are not necessary.
 
@@ -1758,21 +1758,31 @@ mean(knn.pred==YF.test)
 
 # Technical appendix
 
-## [I] Ridge
+## [I] Mean Squared Logarithmic Error
+
+The logarithmic transformation $\tilde y = \log(y+1)$ applied to the target variable makes the MSE take the form $\frac{\sum{(\log(y_T+1)-\log(y_P+1))^2}}{n}=\frac{\sum{(\log(\frac{y_T+1}{y_P+1}))^2}}{n}$, resulting in a measure that
+only cares about the percentual difference between the true and the predicted values. Moreover, in our case we don’t want large errors to be significantly more penalized than small ones, due to the presence of cities with significantly high values with respect to the mean making the range of the target value large.
+To read more about the Mean Squared Logarithmic Error, see [9].
+
+## [II] Ridge
 
 
+To read more about Ridge regression, see [1], 215-216.
 
-## [II] Lasso
-
-
-
-## [III] PCA
+## [III] Lasso
 
 
+To read more about LASSO regression, see [1], .
 
-## [IV] KNN
+## [IV] PCA
 
 
+To read more about PCA, see [1], .
+
+## [V] KNN
+
+
+To read more about KNN, see [1], .
 
 
 # References
@@ -1785,3 +1795,4 @@ mean(knn.pred==YF.test)
 [6] http://www.disastercenter.com/crime/uscrime.htm.
 [7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized.
 [8] https://online.stat.psu.edu/stat462/node/171/.
+[9] https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
