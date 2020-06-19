@@ -1657,7 +1657,7 @@ HLthreshold <- median(standf$ViolentCrimesPerPop) # threshold is the median (bal
 
 YF.train <- Y.train
 YF.train[Y.train > HLthreshold] <- "High"
-YF.train[!Y.train > HLthreshold]<- "Low"
+YF.train[!Y.train > HLthreshold] <- "Low"
 YF.train <- as.factor(YF.train)
 
 YF.test <- Y.test
@@ -1691,12 +1691,13 @@ auc(roc.out)
 plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
 
 # threshold that maximises the sum of sensitivity and specificity
-coords(roc.out, "best")
+rxy <- coords(roc.out, "best")
+rxy
 ```
 
 ```{r}
 logistic.pred <- rep("High", 1596)
-logistic.pred[logistic.prob>0.545] <- "Low"
+logistic.pred[logistic.prob>rxy[,1]] <- "Low"
 
 #train accuracy
 table(logistic.pred,YF.train)
@@ -1708,7 +1709,7 @@ mean(logistic.pred==YF.train)
 #test accuracy
 logistic.prob <- predict(lreg.out, X.test, type="response") # want probability
 logistic.pred <- rep("High", 400)
-logistic.pred[logistic.prob>0.545] <- "Low"
+logistic.pred[logistic.prob>rxy[,1]] <- "Low"
 
 table(logistic.pred,YF.test)
 mean(logistic.pred==YF.test)
