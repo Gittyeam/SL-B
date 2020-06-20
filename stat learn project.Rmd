@@ -1474,7 +1474,6 @@ cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
-
 # Other possible predictive models
 
 In this section other models have been tested for the prediction of the violent and non violent rate var variables.
@@ -1484,14 +1483,15 @@ In this section other models have been tested for the prediction of the violent 
 Until now we assumed that the response variable ViolentCrimesPerPop has equal behaviour between the different states. Even if in practice this assumption considerably simplified the model, the hypothesis of similar distribution between different cities belonging to a vast territory such as the American one, characterized by a wide variety of geographic, cultural and social conditions, could be a too strong request.
 Below a side by side boxplot of ViolentCrimesPerPop between the different states is presented (using the standardized and log-transformed version of the data). The horizontal line draws the mean value between all data without distinction.
 
-```{r}
-boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state", ylab=expression(log(ViolentCrimesPerPop+1)), col= Col)
+```{r, fig.height=10, fig.width=16}
+boxplot(log(standf$ViolentCrimesPerPop+1)~standf$state, xlab="state",
+        ylab=expression(log(ViolentCrimesPerPop+1)), col= Col)
 abline(h=mean(log(standf$ViolentCrimesPerPop+1)), col = "red")
 ```
 
 The plot seems to confirm the doubts discussed above, therefore we tested the linear model considering the categorical variable State as factor.
 
-```{r}
+```{r, warning=FALSE}
 XS = subset(corrdf, select = - c(ViolentCrimesPerPop))
 XS["state"]=standf$state
 
@@ -1500,6 +1500,10 @@ is.factor(XS$state)
 XS.train <- subset(XS, (row.names(XS) %in% train.sample))
 XS.test <- subset(XS, (row.names(XS) %in% test.sample))
 
+Y <- log(corrdf["ViolentCrimesPerPop",drop=FALSE] +1)
+
+Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
+Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
 
 regc.out <- lm(Y.train~. , data=XS.train) #application of LR with a categorical variable
 summary(regc.out)
@@ -1539,14 +1543,19 @@ result<-TukeyHSD(aov.state, "state", ordered = TRUE)
 
 result<-as.data.frame(result$state)
 
-result[result[,4]<0.05,] #where reject equal mean hyphothesis?
+head(result[result[,4]<0.05,],10) #where reject equal mean hyphothesis?
 
 ```
 
-Examining all the pairs in which Tukey's test allows to reject the hypothesis, i.e. where the adjusted p-value is less than $\alpha=0.05$, it can be concluded that the states can be grouped in two main cluster. Also in this case it is interesting to observe how the statistical test result can be interpreted geographically, the two clusers exactly divide the USin two regions, making us hypothesize that the variable of interest may have influences related to social and cultural aspects related to the position.
+Examining all the pairs in which Tukey's test allows to reject the hypothesis, i.e. where the adjusted p-value is less than $\alpha=0.05$, it can be concluded that the states can be grouped in two main cluster. Also in this case it is interesting to observe how the statistical test result can be interpreted geographically, the two clusers exactly divide the USin two regions, making us hypothesize that the variable of interest may have influences related to social and cultural aspects related to the position.  
 
-```{r}
-cluster1 <- c("ND","ME","WI","NH","SD","UT","CT","ID","WY","PA","RI","OR","OH","IA","NJ","WV","MA","MO","OK","IN","VA","CO","WA","AZ","NV","AK","NY","TX","MS","KY","AR","TN","CA","NM","DE")
+```{r, warning=FALSE}
+library(ggplot2)
+library(usmap)
+
+cluster1 <- c("ND","ME","WI","NH","SD","UT","CT","ID","WY","PA","RI","OR","OH","IA",
+              "NJ","WV","MA","MO","OK","IN","VA","CO","WA","AZ","NV","AK","NY","TX",
+              "MS","KY","AR","TN","CA","NM","DE")
 cluster2 <- c("NC","GA","AL","FL","MD","SC","LA","DC")
 
 XS["Cluster"]=rep(1,1996)
@@ -1597,7 +1606,8 @@ Finally ANCOVA is performed, to asses if the two models differ between the two g
 To this end the linear model exploiting also interaction effects between the Cluster variable and all the other is built.
 
 ```{r}
-regc.out <- lm(Y.train~.*Cluster , data=XS.train) #add interaction and main effect due to Cluster
+#add interaction and main effect due to Cluster
+regc.out <- lm(Y.train~.*Cluster , data=XS.train) 
 summary(regc.out)
 ```
 
@@ -1637,7 +1647,11 @@ X.train <- subset(X, (row.names(X) %in% train.sample))
 X.test <- subset(X, (row.names(X) %in% test.sample))
 
 
-Ys<-cbind(log(standf["murdPerPop"]+1), log(standf["rapesPerPop"]+2), log(standf["robbbPerPop"]+1), log(standf["assaultPerPop"]+1), log(standf["burglPerPop"]+2), log(standf["larcPerPop"]+2), log(standf["autoTheftPerPop"]+1), log(standf["arsonsPerPop"]+1), log(standf["ViolentCrimesPerPop"]+1), log(standf["nonViolPerPop"]+2))
+Ys<-cbind(log(standf["murdPerPop"]+1), log(standf["rapesPerPop"]+2), 
+          log(standf["robbbPerPop"]+1), log(standf["assaultPerPop"]+1),
+          log(standf["burglPerPop"]+2), log(standf["larcPerPop"]+2), 
+          log(standf["autoTheftPerPop"]+1), log(standf["arsonsPerPop"]+1),
+          log(standf["ViolentCrimesPerPop"]+1), log(standf["nonViolPerPop"]+2))
 
 Ys.train<- as.matrix(subset(Ys, (row.names(Ys) %in% train.sample)))
 Ys.test<- as.matrix(subset(Ys, (row.names(Ys) %in% test.sample)))
@@ -1653,7 +1667,7 @@ n <- 400
 p <- 52
 
 pred = predict(mm, X.test)
-rss <- colSums((as.data.frame(Ys.test) - as.data.frame(pred))^2)       # Residual Sum of Squares
+rss <- colSums((as.data.frame(Ys.test) - as.data.frame(pred))^2)# Residual Sum of Squares
 ess <- colSums((pred - mean(as.matrix(Ys.test)))^2) # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
@@ -1676,7 +1690,9 @@ For convenience in this simplistic study, we decided to proceed using the median
 ```{r}
 
 #HLthreshold <- 0 # threshold is the mean (0 since standardized)
-HLthreshold <- median(standf$ViolentCrimesPerPop) # threshold is the median (balanced classes)
+
+# threshold is the median (balanced classes)
+HLthreshold <- median(standf$ViolentCrimesPerPop) 
 
 YF.train <- Y.train
 YF.train[Y.train > HLthreshold] <- "High"
@@ -1703,15 +1719,16 @@ logistic.prob <- predict(lreg.out, type="response") # want probability
 ```
 
 In order to select the best threshold for the probability, the ROC curve is plotted. The shape of the function and the AUC value confirm the acceptable quality of the model.
-```{r}
+```{r, fig.height=5, fig.width=5, warning=FALSE}
 # ROC curve 
-
+library(pROC)
 # levels = controls (0's) as first element and  cases (1's) as second
 roc.out <- roc(YF.train, logistic.prob, levels=c("Low", "High"), transpose = TRUE)
 
 auc(roc.out)
 
-plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate", ylab="True positive rate")
+plot(roc.out,  print.auc=TRUE, legacy.axes=TRUE, xlab="False positive rate",
+     ylab="True positive rate")
 
 # threshold that maximises the sum of sensitivity and specificity
 rxy <- coords(roc.out, "best")
@@ -1746,11 +1763,14 @@ Finally we improved a completely non-parametric and non-linear approach: KNN. In
 
 Strictly speaking, we first performed 10 folds cross validation to choose the best value for k, i.e. the number of closest training observations to consider to assign the majority class to a new point.
 
-```{r}
+```{r, warning=FALSE}
 #10 fold cross validation
 XY.train=as.data.frame(cbind(X.train,YF.train))
 XY.train$YF.train<- as.factor(XY.train$YF.train)
 is.factor(XY.train$YF.train)
+
+# install.packages("caret", dependencies = T)
+library(caret)
 
 trControl <- trainControl(method  = "cv",number  = 10)
 
@@ -1767,15 +1787,14 @@ fit
 From the C.V., the best k is 5, then the model is performed with this value on the test set, returning an accuracy of 81.5%.
 Note that the performance is slightly poorer than the linear, confirming us the power of this simple and fully interpretable model even with a large dataset, with many possible correlated features, as the one under investigation.
 
-```{r}
+```{r, warning=FALSE}
+library(class)
 # test accuracy
 knn.pred <- knn(X.train, X.test, YF.train, k=5)
 table(knn.pred,YF.test)
 mean(knn.pred==YF.test)
 ```
 
-
-# Conclusions - Comparing results
 
 Let's have a brief recap and see what we have learned.
 We started with an overall exploration of the dataset, handling, in the meanwhile,
@@ -1800,7 +1819,7 @@ to test a non-linear and non-parametric approach.
 As for the effectiveness of the model, it turned out that the binary classifiers have a rewarding accuracy of 80-85%,
 while the regression models reach barely sufficient results: in the Principal Component regression, even with a valuable
 adjusted $R^2$ of 65%, the logarithmic tranformation applied to the target variable led us to compute a MSLE of 0.35,
-which says that the average ratio between the predicted value +1 and the true value +1 is $\sqrt(e^\text{MSLE})=1.81^{(\pm 1)}$. This is mainly due to the fact that a linear model (and in general a polinomial one, which gave similar results), is not enough to fit the complexity of the data, as we expected given the complexity of the task even from a social perspective. Furthermore, a huge limitation was the really poor quality of the LEMAS dataset, the one gathered from the police departments, and this didn't allow us to perform a parallel study to investigate a more local point of view.
+which says that the average ratio between the predicted value +1 and the true value +1 is $\sqrt{e^\text{MSLE}}=1.81^{(\pm 1)}$. This is mainly due to the fact that a linear model (and in general a polinomial one, which gave similar results), is not enough to fit the complexity of the data, as we expected given the complexity of the task even from a social perspective. Furthermore, a huge limitation was the really poor quality of the LEMAS dataset, the one gathered from the police departments, and this didn't allow us to perform a parallel study to investigate a more local point of view.
 
 At the end of the story, we tried to apply our knowledge in statistical learning to reach a satisfying level of comprehension
 of our data and the structures behind them, realizing that this is a task that goes beyond the concatenation of mathematical models,
