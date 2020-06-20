@@ -10,6 +10,11 @@ output: pdf_document
 knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 ```
 
+```{r, include=FALSE}
+# set working directory
+# setwd("Project/code")
+```
+
 # Aim of the project
 
 Predicting the rate of violent crime in a community can be particularly helpful in reducing the actual possibility of such crimes occurring.
@@ -908,7 +913,7 @@ From this point on, only the 52 variables selected in this section will be consi
 
 ```{r, include=FALSE}
 # remove no more useful variables
-rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf","Col")))
+rm(list=setdiff(ls(), c("crimedata","cleandf","standf","corrdf","Col","Rgb")))
 ```
 
 ```{r, include=FALSE}
@@ -916,8 +921,18 @@ rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf","Col")))
 # write.csv(corrdf, "../data/crimedata-corr.csv", row.names=TRUE)
 ```
 
-
+\newpage
 # Variables selection
+
+```{r, include=FALSE}
+# set seed
+set.seed(1234)
+```
+
+```{r, include=FALSE}
+# import cleaned and standardized dataset with the removal of highly correlated columns
+# corrdf <- read.csv("../data/crimedata-corr.csv", row.names = 1)
+```
 
 With the removal of highly correlated columns, the dataset has decreased from 100 to 52 numeric predictor features. Even if we almost halved the dimension, p, the number of variables is still large.
 As we will see, many of these variables are irrelevant and not associated with the response. Performing attribute selection is then a necessary step in order to find a good and representative subset of significative features, avoiding then to include useless information that makes our model unnecessarily complex.
@@ -927,13 +942,14 @@ In this section different techniques for feature selection are presented and tes
 Before to go into the details, note that from now on the models are trained not on the full dataset but only on a fraction (80% of the rows). The remaining part is then used to estimate the test error. Results are given in terms of MSE (Mean Squared Error) and adjusted $R^2$ to ensure comparability between models built with different numbers of predictors.
 
 ## Train - Test split
+
 ```{r}
 # Train-Test samples
 train.sample <- as.numeric(sample(rownames(corrdf), 0.8*dim(corrdf)[1]))
 test.sample <- as.numeric(setdiff(rownames(corrdf), train.sample))
 ```
 
-```{r}
+```{r, warning=FALSE}
 X = subset(corrdf, select = - c(ViolentCrimesPerPop))
 X.train <- subset(X, (row.names(X) %in% train.sample))
 X.test <- subset(X, (row.names(X) %in% test.sample))
@@ -944,9 +960,9 @@ Y.train <- unlist(subset(Y, (row.names(Y) %in% train.sample)))
 Y.test <- unlist(subset(Y, (row.names(Y) %in% test.sample)))
 ```
 
-We firstly compute the test error on the full model in order to have beseline values. For "full" here we mean the linear regression model using all the standardized columns left from the correlation investigation which aims to predict the log-transformed variable ViolentCrimesPerPop.
-
 ## Full model
+
+We firstly compute the test error on the full model in order to have beseline values. For "full" here we mean the linear regression model using all the standardized columns left from the correlation investigation which aims to predict the log-transformed variable ViolentCrimesPerPop.
 
 ```{r}
 full.mod <- lm(Y.train~., data=X.train)
@@ -956,7 +972,7 @@ summary(full.mod)
 ```{r}
 # prediction 
 n <- dim(X.test)[1]
-p <- dim(X.test)[2]
+p <- length(full.mod$coefficients) - 1
 f.pred = predict(full.mod, X.test)
 rss <- sum((Y.test - f.pred)^2)           # Residual Sum of Squares
 ess <- sum((f.pred - mean(Y.test))^2)     # Explained Sum of Squares
@@ -973,56 +989,49 @@ As expected, from the summary it can be noticed that many of the 52 predictors a
 
 ## Best subset selection
 
-The first approach we tried is the Best Subset Selection method, an intuitively simple strategy which fits all possible models with at most k = 1, 2, ..., p attributes chosen between all the p available and then select the best according to different measures such as $C_p$, BIC and adjusted $R^2$.
-It is easy to understand that this exhaustive search has exponential time in p, making it not very efficient for our case. For this reason we performed the method fixing the maximum number of features to 15 instead of 52. Note that even with this big reduction the function is very slow ( 10 minutes running time). 
+The first approach we tried is the Best Subset Selection method, an intuitively simple strategy which fits all possible models with at most $k = 1, 2,\dots, p$ attributes chosen between all the $p$ available and then select the best according to different measures such as $C_p$, BIC and adjusted $R^2$.
+It is easy to understand that this exhaustive search has exponential time in $p$, making it not very efficient for our case. For this reason we performed the method fixing the maximum number of features to 15 instead of 52. Note that even with this big reduction the function is very slow (10 minutes running time). 
 
+```{r, include=FALSE}
+library(leaps)
+```
 
 ```{r}
 regfit.full <- regsubsets(Y.train~., nvmax = 15, really.big=T, data= X.train)
-
 reg.summary <- summary(regfit.full)
 ```
 
 The plots of the evaluation measures $C_p$, BIC and adjusted $R^2$ in function of the number of variables are shown below with a red star in corrispondence of the optima.   
 
-```{r}
-# first group of plots 
-#
+```{r, fig.height=6, fig.width=6}
 par(mfrow=c(2,2))
-
-# panel 1
 plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
 
-# panel 2
 plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
 mad<-which.max(reg.summary$adjr2)
 points(mad,reg.summary$adjr2[mad], col="red",cex=2,pch=20)
 
-# panel 3
 plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
 mcp<-which.min(reg.summary$cp)
 points(mcp,reg.summary$cp[mcp],col="red",cex=2,pch=20)
 
-# panel 4
 plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 mb<-which.min(reg.summary$bic)
 points(mb,reg.summary$bic[mb],col="red",cex=2,pch=20)
-
 par(mfrow=c(1,1))
 ```
 
 In addition, graphical representations of the best subsect selected for each value of k $\in [1,15]$ are plotted. Note that the intensity of the colours on the gray scale corresponds to the level of significance.
 
-```{r}
-# second group of plots 
-
-plot(regfit.full,scale="adjr2")
-plot(regfit.full,scale="Cp")
-plot(regfit.full,scale="bic")
-
+```{r, fig.height=14, fig.width=8}
+par(mfrow=c(3,1))
+plot(regfit.full,scale="adjr2", main="Adj R2")
+plot(regfit.full,scale="Cp", main="Cp")
+plot(regfit.full,scale="bic", main="BIC")
 ```
 
 Finally, the best models selected according to $C_p$, BIC and adjusted $R^2$ the are then tested.
+
 ```{r}
 # predict with adjR2 best
 coef <- coef(regfit.full,mad) #coeff of the best model suggested by adjR2
@@ -1083,13 +1092,14 @@ n <- dim(X.test)[1]
 p <- mb
 
 b.pred=as.matrix(X.test[,bvar])%*%coef[bvar] + coef["(Intercept)"]
-rss <- sum((Y.test - b.pred)^2)       # Residual Sum of Squares
-ess <- sum((b.pred - mean(Y.test))^2) # Explained Sum of Squares
+
+rss <- sum((Y.test - b.pred)^2)            # Residual Sum of Squares
+ess <- sum((b.pred - mean(Y.test))^2)      # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1105,22 +1115,22 @@ The Best subset method is very time expensive when searching between large numbe
 Backward selection begins with the full least squares model containing all p predictors, and then iteratively removes the least useful predictor, one-at-a-time.
 
 ```{r}
-step.mod <- step(full.mod, steps=53,  trace=0, direction="backward")
-summary(step.mod)
+back.mod <- step(full.mod, steps=53,  trace=0, direction="backward")
+summary(back.mod)
 ```
 
 ```{r}
 # prediction 
 n <- dim(X.test)[1]
-p <- 31
-bw.pred = predict(step.mod, X.test)
+p <- length(back.mod$coefficients) - 1
+bw.pred = predict(back.mod, X.test)
 rss <- sum((Y.test - bw.pred)^2)           # Residual Sum of Squares
 ess <- sum((bw.pred - mean(Y.test))^2)     # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1132,40 +1142,50 @@ Forward stepwise selection begins with the empty model containing no predictors,
 ```{r}
 empty.mod <- lm(Y.train~1, data=X.train)
 
-step.mod <- step(empty.mod, steps=53,  trace=0, scope=list(lower=formula(empty.mod), upper=formula(full.mod)), direction="forward")
-summary(step.mod)
+forw.mod <- step(empty.mod, steps=53,  trace=0, scope=list(lower=formula(empty.mod), upper=formula(full.mod)), direction="forward")
+summary(forw.mod)
 ```
 
 ```{r}
 # prediction 
 n <- dim(X.test)[1]
-p <- 27
-fw.pred = predict(step.mod, X.test)
-rss <- sum((Y.test - fw.pred)^2)       # Residual Sum of Squares
-ess <- sum((fw.pred - mean(Y.test))^2) # Explained Sum of Squares
+p <- length(forw.mod$coefficients) - 1
+fw.pred = predict(forw.mod, X.test)
+rss <- sum((Y.test - fw.pred)^2)           # Residual Sum of Squares
+ess <- sum((fw.pred - mean(Y.test))^2)     # Explained Sum of Squares
 tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
 These greedy algorithms managed in few seconds to achieve quality solutions in terms of meaningfulness and reduction of the variables, MSE and adjusted $R^2$ scores. Note that the accuracy in MSE is equal to the one of super time expensive best subset methods, backward and forward strategy proved then to be very efficient in our quite large application.
 
+```{r, fig.height=12, fig.width=16}
+# backward and forward estimated coefficients comparison
+par(mfrow=c(1,2), mar=c(5,12,6,1)+.1)
+barplot(sort(back.mod$coefficients[!(names(back.mod$coefficients) %in% "(Intercept)")]),
+        horiz = TRUE, las=1, col=Col[4], main ="Backward")
+
+barplot(sort(forw.mod$coefficients[!(names(forw.mod$coefficients) %in% "(Intercept)")]),
+        horiz = TRUE, las=1, col=Col[3], main ="Forward")
+```
+
 ## Shrinkage methods
 
 The shrinkage methods represent a valid alternative to the subset selection methods seen above, they allow to reduce the complexity of the model and moreover they perform a regularization role. While backward and forward elimination use least squares to fit a linear model that contains a subset of the predictors, the shrinkage methods fit a model containing all $p$ predictors using a technique that shrinks the coefficient estimates towards zero.
 
-Below, RIDGE and LASSO regression are implemented.
+RIDGE and LASSO regression are implemented below.
 
 ```{r}
-# Convert dataframes to matrixes
-X.train <- as.matrix(X.train)
-X.test <- as.matrix(X.test)
-Y.train <- as.matrix(Y.train)
-Y.test <- as.matrix(Y.test)
+# convert dataframes to matrixes
+X.train.mat <- as.matrix(X.train)
+X.test.mat <- as.matrix(X.test)
+Y.train.mat <- as.matrix(Y.train)
+Y.test.mat <- as.matrix(Y.test)
 ```
 
 ### Ridge Regression with Cross-Validation[II]
@@ -1173,34 +1193,38 @@ Y.test <- as.matrix(Y.test)
 In RIDGE regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}\beta_j^2$.
 In order to determine the best value of the regularization parameter we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
 
-```{r}
-# Lambda values to try
+```{r, include=FALSE}
+library(glmnet)
+```
+
+```{r, fig.height=4.5, fig.width=6}
+# lambda values to try
 lambda.val <- 10^seq(3, -3, length=100)
 
-# Ridge-Regression with 10-fold cross-validation on training set to choose lambda
-ridge.mod.cv <- cv.glmnet(X.train, Y.train, alpha=0,
+# ridge regression with 10-fold cross-validation on training set to choose lambda
+ridge.mod.cv <- cv.glmnet(X.train.mat, Y.train.mat, alpha=0,
                           lambda=lambda.val, nfolds = 10)
 plot(ridge.mod.cv)
 ```
 
 ```{r}
-# Best cross-validated lambda
+# best cross-validated lambda
 lam.min <- ridge.mod.cv$lambda.min
 lam.1se <- ridge.mod.cv$lambda.1se
 ```
 
 From the model we obtain the value of $\lambda$.min which gives the lowest cross-validation error and the value of $\lambda$.1se which has error within 1 standard error of the best model. Using the value of $\lambda$.1se results in a model that is slightly simpler than the best model and whose accuracy is comparable with the best model.
 
-```{r}
-# Ridge-Regression on the entire train set
-ridge.mod <- glmnet(X.train, Y.train , alpha=0, lambda=lambda.val)
+```{r, fig.height=4.5, fig.width=6}
+# ridge regression on the entire train set
+ridge.mod <- glmnet(X.train.mat, Y.train.mat, alpha=0, lambda=lambda.val)
 plot(ridge.mod, xvar = "lambda")
 abline(v=log(lam.min), lty=2, col=1)
 abline(v=log(lam.1se), lty=2, col=2)
 legend("bottomright", c("lambda.min", "lambda.1se"), lty=c(2,2), col = c(1,2))
 ```
 
-RIDGE regression decreases model complexity while keeping all variables in the model by shrinking the coefficients of low-variance components more than those of highvariance components. The more lambda increases, the more the coefficients are shrinkaged towards zero.
+RIDGE regression decreases model complexity while keeping all variables in the model by shrinking the coefficients of low-variance components more than those of highvariance components. The more lambda increases, the more the coefficients are shrunk towards zero.
 
 Let us compare the coefficients which result from the choice of $\lambda$.min and $\lambda$.1se.
 
@@ -1210,16 +1234,9 @@ ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.min))
 ridge.coef <- as.data.frame(ridge.coef)
 colnames(ridge.coef) <- c("Coefficients")
 
-# Most relevant predictors
-subset.data.frame(ridge.coef, abs(Coefficients)>0.1)
+# most relevant predictors
+subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
 ```
-
-The predictors having an estimated coefficient greater than 0.1 are:
-
-* the percentage of households with investment/rent income (pctWInvInc);
-* the percentage of percentage of population who are divorced (TotalPctDiv);
-* the percentage of African-American (racepctblack);
-* the percentage of people living in areas classified as urban (pctUrban).
 
 ```{r}
 # ridge regression estimated coefficients for lambda.1se
@@ -1227,28 +1244,37 @@ ridge.coef <- as.matrix(coef(ridge.mod.cv,s=lam.1se))
 ridge.coef <- as.data.frame(ridge.coef)
 colnames(ridge.coef) <- c("Coefficients")
 
-# Most relevant predictors
-subset.data.frame(ridge.coef, abs(Coefficients)>0.1)
+# most relevant predictors
+subset.data.frame(ridge.coef, abs(Coefficients)>0.05)
 ```
 
-The most relevant predictors are again racepctblack, TotalPctDiv and pctWInvInc; however, as a result of choosing a higher lambda value, the associated estimated coefficients are smaller than before.
+```{r, fig.height=16, fig.width=10}
+par(mfrow=c(1,2), mar=c(5,12,6,1)+.1)
+ridge.coef.lam.min <- coef(ridge.mod.cv,s=lam.min)
+barplot(sort(ridge.coef.lam.min[!(rownames(ridge.coef.lam.min) %in% "(Intercept)"),]),
+        horiz = TRUE, las=1, col=Col[5], main ="RIDGE coefficients - lambda.min")
+
+ridge.coef.lam.1se <- coef(ridge.mod.cv,s=lam.1se)
+barplot(sort(ridge.coef.lam.1se[!(rownames(ridge.coef.lam.1se) %in% "(Intercept)"),]),
+        horiz = TRUE, las=1, col=Col[1], main ="RIDGE coefficients - lambda.1se")
+```
 
 Since the model with $\lambda$.1se would trivially perform worse, we test the model associated to $\lambda$.min.
 
 ```{r}
-# Prediction on test set
-Y.hat <- predict(ridge.mod.cv, newx = X.test, s=lam.min)
+# prediction on test set
+Y.hat <- predict(ridge.mod.cv, newx = X.test.mat, s=lam.min)
 
 n <- dim(X.test)[1]
 p <- dim(ridge.coef)[1] -1 #remove intercept
 
-rss <- sum((Y.test - Y.hat)^2)             # Residual Sum of Squares
-ess <- sum((Y.hat - mean(Y.test))^2)       # Explained Sum of Squares
-tss <- ess + rss                           # Total Sum of Squares
-r2 <- 1 - rss/tss                          # R Squared statistic
-adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+rss <- sum((Y.test.mat - Y.hat)^2)             # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test.mat))^2)       # Explained Sum of Squares
+tss <- ess + rss                               # Total Sum of Squares
+r2 <- 1 - rss/tss                              # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))            # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                                   # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1259,25 +1285,25 @@ cat("adjR^2: ", round(adjr2,2), "\n")
 In LASSO regression the estimated coefficients are obtained by minimizing $RSS + \lambda \sum_{j=1}^{p-1}|\beta_j|)$.
 In order to determine the best value of the regularization parameter we use the same approach as before and we perform a 10-fold cross-validation on 100 values of $\lambda$ in the interval $[10^{-3}, 10^{3}]$.
 
-```{r}
-# Lambda values to try
+```{r,fig.height=4.5, fig.width=6}
+# lambda values to try
 lambda.val <- 10^seq(3, -3, length=100)
 
-# Lasso-Regression with 10-fold cross-validation on training set to choose lambda
-lasso.mod.cv <- cv.glmnet(X.train, Y.train, alpha=1,
+# lasso regression with 10-fold cross-validation on training set to choose lambda
+lasso.mod.cv <- cv.glmnet(X.train.mat, Y.train.mat, alpha=1,
                           lambda=lambda.val, nfolds = 10)
 plot(lasso.mod.cv)
 ```
 
 ```{r}
-# Best cross-validated lambda
+# best cross-validated lambda
 lam.min <- lasso.mod.cv$lambda.min
 lam.1se <- lasso.mod.cv$lambda.1se
 ```
 
-```{r}
-# Lasso-Regression on the entire train set
-lasso.mod <- glmnet(X.train, Y.train , alpha=1, lambda=lambda.val)
+```{r,fig.height=4.5, fig.width=6}
+# lasso regression on the entire train set
+lasso.mod <- glmnet(X.train.mat, Y.train.mat, alpha=1, lambda=lambda.val)
 plot(lasso.mod, xvar = "lambda")
 abline(v=log(lam.min), lty=2, col=1)
 abline(v=log(lam.1se), lty=2, col=2)
@@ -1294,22 +1320,13 @@ lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.min))
 lasso.coef <- as.data.frame(lasso.coef)
 colnames(lasso.coef) <- c("Coefficients")
 
-# number of predictors
+# number of coefficents different from zero
 p.min <- sum(abs(lasso.coef$Coefficients)>0)-1  #remove intercept
+p.min
 
-# coefficients different from zero 
-subset.data.frame(lasso.coef, abs(Coefficients)>0.1)
+# most relevant predictors
+subset.data.frame(lasso.coef, abs(Coefficients)>0.05)
 ```
-
-LASSO regression with $\lambda$.min selects 33 variables, collecting different kinds of information: ethnicity, age, income, education, marital status, houses occupation and many others.
-Also in this case, the most relavant predictors (with estimated coefficient greater than 0.1) are almost the same as for RIDGE regression:
-
-* the percentage of households with investment/rent income (pctWInvInc);
-* the percentage of percentage of population who are divorced (TotalPctDiv);
-* the percentage of African-American (racepctblack);
-* the percentage of Hispanic-American (racePctHisp);
-* the percentage of people living in areas classified as urban (pctUrban).
-
 
 ```{r}
 # lasso regression estimated coefficients for lambda.1se
@@ -1317,31 +1334,43 @@ lasso.coef <- as.matrix(coef(lasso.mod.cv,s=lam.1se))
 lasso.coef <- as.data.frame(lasso.coef)
 colnames(lasso.coef) <- c("Coefficients")
 
-# number of predictors
-p.se <- sum(abs(lasso.coef$Coefficients)>0)-1  #remove intercept
+# number of coefficents different from zero
+p.1se <- sum(abs(lasso.coef$Coefficients)>0)-1  #remove intercept
+p.1se
 
-# coefficients different from zero 
-subset.data.frame(lasso.coef, abs(Coefficients)>0)
+# most relevant predictors
+subset.data.frame(lasso.coef, abs(Coefficients)>0.05)
 ```
 
-LASSO regression with $\lambda$.1se results in a simpler model with 21 variables.
+LASSO regression with $\lambda$.1se results in a simpler model with less variables.
 
-We test the model with $\lambda$.min
+```{r, fig.height=16, fig.width=10}
+par(mfrow=c(1,2), mar=c(5,12,6,1)+.1)
+lasso.coef.lam.min <- coef(lasso.mod.cv,s=lam.min)
+barplot(sort(lasso.coef.lam.min[!(rownames(lasso.coef.lam.min) %in% "(Intercept)"),]),
+        horiz = TRUE, las=1, col=Col[5], main ="LASSO coefficients - lambda.min")
+
+lasso.coef.lam.1se <- coef(lasso.mod.cv,s=lam.1se)
+barplot(sort(lasso.coef.lam.1se[!(rownames(lasso.coef.lam.1se) %in% "(Intercept)"),]),
+        horiz = TRUE, las=1, col=Col[1], main ="LASSO coefficients - lambda.1se")
+```
+
+We test the model with $\lambda$.min.
 
 ```{r}
 # prediction on test set
-Y.hat <- predict(lasso.mod.cv, newx = X.test, s=lam.min)
+Y.hat <- predict(lasso.mod.cv, newx = X.test.mat, s=lam.min)
 
 n <- dim(X.test)[1]
 p <- p.min
 
-rss <- sum((Y.test - Y.hat)^2)             # Residual Sum of Squares
-ess <- sum((Y.hat - mean(Y.test))^2)       # Explained Sum of Squares
-tss <- ess + rss                           # Total Sum of Squares
-r2 <- 1 - rss/tss                          # R Squared statistic
-adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
+rss <- sum((Y.test.mat - Y.hat)^2)             # Residual Sum of Squares
+ess <- sum((Y.hat - mean(Y.test.mat))^2)       # Explained Sum of Squares
+tss <- ess + rss                               # Total Sum of Squares
+r2 <- 1 - rss/tss                              # R Squared statistic
+adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))            # adjusted R square 
 
-mse <- rss/n                               # Mean Squared Error
+mse <- rss/n                                   # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
@@ -1352,11 +1381,16 @@ To gather the most information possible in relatively few columns we implemented
 In particular the strength of this method resides in the fact that, starting from a variance maximization unconstrained problem,
 we go on selecting orthogonal components given by proper linear combinations of the original columns,
 both scaling the dimensionality of the problem and mitigating the effects related to the covariance between the original variables.
-```{r}
+
+```{r, include=FALSE}
+library(factoextra)
+```
+
+```{r, fig.height=3}
 # PCA computation
 pc <- princomp(X) # cor=TRUE to obtain it from the correlation matrix
 
-#str(pc)
+# str(pc)
 # first k principal components
 k <- 40
 plot(pc, npcs=k, cex.names=0.5,las=2, col="#00AFBB", main='Principal Components')
@@ -1374,7 +1408,7 @@ barplot(pc$loadings[,9], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 9
 barplot(pc$loadings[,10], cex.names=0.5,las=2, col=  "#FC4E07", main='Component 10')
 par(mfrow=c(1,1))
 
-#influent features per component 1 e 2
+# influent features per component 1 e 2
 infl1 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,1])>0.25]
 infl1
 infl2 <- colnames(corrdf[,-dim(corrdf)[2]])[abs(pc$loadings[,2])>0.2]
@@ -1388,6 +1422,7 @@ fviz_pca_var(pc,
              select.var = list(contrib = 15)
              )
 ```
+
 The principal limitation of PCA concerns interpretation, but it is possible to explore the resulting loadings to
 hopefully extrapolate the semantic area of the main components in each principal direction.
 Trying to interpret the main components of the first loading (corresponding to the maximum variance direction), for example, it seems to be mainly identified by the original columns related to the working condition of the householder(s). It is interesting to notice the presence of the column "PctHousNoPhone", the percentage of occupied housing units without phone, but one should notice that in 1990 it was a strong indication of lack of need to contact and be contacted, besides the economical factor. As for the second one, the geo-cultural factors are predominant.
@@ -1396,22 +1431,26 @@ Trying to interpret the main components of the first loading (corresponding to t
 ### PC regression
 
 At this point we use a 10-fold cross validation on the training set to select the best tradeoff between the number of columns to drop and the performance of the model.
+
 ```{r, include=FALSE}
 # install.packages("pls")
 library(pls)
 ```
 
-```{r}
+```{r, fig.height=3.5}
 pcr.fit = pcr(Y.train~., data=X.train, validation = "CV") # k=10 by default
 # summary(pcr.fit)
 
 # plot of CV error
+par(mfrow=c(1,2))
 validationplot(pcr.fit, val.type = "MSEP")
 validationplot(pcr.fit, val.type = "R2")
+par(mfrow=c(1,1))
 # looking at the plot, 11 could be a great choice
 ```
 
 It shows up that great tradeoff is to train the final model using the first 11 principal components, and in this way we're able to reach a slightly better accuracy than the previous models, still keepeng low the dimension of the used dataset.
+
 ```{r}
 # prediction in the model above
 n <- dim(X.test)[1]
@@ -1423,12 +1462,18 @@ tss <- ess + rss                           # Total Sum of Squares
 r2 <- 1 - rss/tss                          # R Squared statistic
 adjr2 <- 1 - (1-r2)*((n-1)/(n-p-1))        # adjusted R square 
 
-mse <- rss/n                               #Mean Squared Error
+mse <- rss/n                               # Mean Squared Error
 cat("MSE: ", round(mse,2), "\n")
 cat("adjR^2: ", round(adjr2,2), "\n")
 ```
 
+```{r, include=FALSE}
+# remove no more useful variables
+rm(list=setdiff(ls(), c("crimedata","cleandf","standf","corrdf","Col","Rgb",
+"train.sample", "test.sample")))
+```
 
+\newpage
 # Other possible predictive models
 
 In this section other models have been tested for the prediction of the violent and non violent rate var variables.
@@ -1617,8 +1662,6 @@ mse <- rss/n
 
 as.data.frame(cbind(mse,adjr2))
 ```
-
-
 
 ## Binary classification models
 
