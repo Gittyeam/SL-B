@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, include=FALSE}
 # set working directory
-setwd("C:/Users/Natascia/Desktop/DataS_2/Stat_B/Project/code")
+# setwd("Project/code")
 ```
 
 # Aim of the project
