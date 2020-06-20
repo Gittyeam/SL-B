@@ -57,13 +57,15 @@ This is what we are going to do with this project, by investigating the USA Comm
 
 # Dataset Description
 
-The dataset contains a total number of 2215 instances, each one associated to a community in the US, and 147 attributes which result from the combination of socio-economic data from 1990 US Census, law enforcement data from the 1990 US LEMAS survey and crimedata from the 1995 FBI UCR.
+The dataset contains a total number of 2215 instances, each one associated to a community in the US, and 147 attributes which result from the combination of socio-economic data from 1990 US Census, law enforcement data from the 1990 US LEMAS survey and crimedata from the 1995 FBI UCR.[^1]
+
+[^1]: Attributes details in the appendix.
 
 # Data Cleaning
 
 ```{r}
-# import dataset
-crimedata <- read.csv("crimedata.csv", na.strings="?") # missing values are stored as "?"
+# import dataset (missing values stored as "?" - imported as NA)
+crimedata <- read.csv("../data/crimedata.csv", na.strings="?")
 dim(crimedata)
 ```
 
@@ -84,6 +86,7 @@ is.factor(crimedata$state)
 sum(sapply(crimedata, is.numeric))
 ```
 
+
 ## Missing values
 
 ```{r}
@@ -100,8 +103,9 @@ library(varhandle)
 ```
 
 ```{r}
-# nadf dataframe with columns that present NA 
-nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, na.value = NA)
+# dataframe with columns that present NA
+nadf <- inspect.na(crimedata, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=TRUE, 
+                   na.value = NA)
 ```
 
 There are 41 columns with missing values, many of them with more than 50% of the data missing.
@@ -141,13 +145,14 @@ coltodrop
 cleandf <- crimedata[,!(names(crimedata) %in% coltodrop)]
 ```
 
-### Possible ways to handle missing values:
+### Possible ways to handle missing values
 
 The remaining variables with missing values are the ones related to the crimes and another one, the variable OtherPerCap (per capita income for people with 'other' heritage), which has only one missing value.
 
 ```{r}
 # remaining columns with NA
-nadf <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=FALSE, na.value = NA)
+nadf <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=FALSE, barplot=FALSE,
+                   na.value = NA)
 nacolnames <- as.vector(nadf$column_name)
 nacolnames
 ```
@@ -160,7 +165,8 @@ Possible ways to handle the remaining missing values:
 
 ```{r}
 # rows with NA
-narows <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=TRUE, barplot=FALSE, na.value = NA)
+narows <- inspect.na(cleandf, hist=FALSE, summary=TRUE, byrow=TRUE, barplot=FALSE,
+                     na.value = NA)
 dim(narows)[1]
 ```
 
@@ -168,25 +174,25 @@ Since there are a lot of rows that have at least one missing values, we decide t
 
 ```{r}
 # dataframe of the columns which still contain NA with the mean computed over the state
-meandf <- aggregate(cleandf[,nacolnames], list(cleandf$state), function(x) mean(x, na.rm = TRUE))
+meandf <- aggregate(cleandf[,nacolnames], list(cleandf$state), 
+                    function(x) mean(x, na.rm = TRUE))
 sum(is.na(meandf))
 ```
 
-The dataframe with the mean contains NaN values, this means that there are States for which the value of a certain feature is zero for all communities that belong to them.
+The dataframe with the mean contains NA values, this means that there are States for which the value of a certain feature is zero for all communities that belong to them.
 This happens for IL, MI (no data of rapes, rapesPerPop, ViolentCrimesPerPop), KS, VT (no data of arsons, arsonsPerPop, nonViolPerPop).
 Moreover from documentation we know that also MN has a lot of missing values for rapes (59 out of 66):
 
 ```{r}
 mnNA = sum(is.na(cleandf[cleandf$state=="MN","rapes"]))
 mnTot = length(cleandf[cleandf$state=="MN","rapes"])
-c(mnNA, mnTot, mnNA/mnTot)
+round(c(mnNA, mnTot, mnNA/mnTot), 2)
 ```
 
 Therefore, data related to those states is removed.
 
 ```{r}
 rowtodrop <- as.numeric(rownames(cleandf[cleandf$state %in% c("IL","MI","MN","KS","VT"),]))
-
 cleandf <- cleandf[!(rownames(cleandf) %in% rowtodrop),]
 ```
 
@@ -232,15 +238,18 @@ standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardi
 ```
 
 ```{r, include=FALSE}
-# remove all variables from environment excpet useful dataset
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf")))
+# remove all variables from environment excpet the cleaned and the original dataset
+rm(list=setdiff(ls(), c("cleandf", "crimedata", "standf")))
 ```
 
 ```{r, include=FALSE}
 # save cleandf and standf to CSV 
-# write.csv(cleandf, "crimedata-cleaned.csv", row.names=TRUE)
-# write.csv(standf, "crimedata-cleaned-stand.csv", row.names=TRUE)
+# write.csv(cleandf, "../data/crimedata-cleaned.csv", row.names=TRUE)
+# write.csv(standf, "../data/crimedata-cleaned-stand.csv", row.names=TRUE)
 ```
+
+\newpage
+# Exploratory Data Analysis 
 
 ```{r, include=FALSE}
 Col = c("#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
@@ -251,11 +260,9 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
         rgb(0.03, 0.23, 0.3, 0.7))
 ```
 
-# Exploratory Data Analysis 
-
-```{r}
+```{r, include=FALSE}
 # import cleaned dataset
-# cleandf <- read.csv("crimedata-cleaned.csv", row.names = 1)
+# cleandf <- read.csv("../data/crimedata-cleaned.csv", row.names = 1)
 # dim(cleandf)
 ```
 
@@ -293,11 +300,12 @@ library(usmap)
 par(mfrow=c(1,1))
 plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
    scale_fill_continuous(trans="sqrt", low = Rgb[3], high = Rgb[1],
-                         name = "Viol Crimes 100K pop", limits=c(85,3049), label=scales::comma) +
+                         name = "Viol Crimes 100K pop", limits=c(85,3049),
+                         label=scales::comma) +
   theme(legend.position = "right")
 ```
 
-We can notice that the states with the highest average violent crimes rate are mostly located in the south-east. Moreover, the summary and the geographical plot suggest the presence of some outlier in the averages.
+We can notice that the states with the highest average violent crimes rate are mostly located in the southeast. Moreover, the summary and the geographical plot suggest the presence of some outlier in the averages.
 
 ```{r, fig.width=16, fig.height=5}
 barplot(vc_state$ViolentCrimesMean, names.arg = vc_state$state, las=2, col=Col[1],
@@ -307,6 +315,7 @@ vc_state[vc_state$ViolentCrimesMean == max(vc_state$ViolentCrimesMean),]
 
 It is evident that the value associated to Washington D.C. is much larger than the others.
 However, this huge discrepancy may be due to the fact that we are dealing with the capital of the US, then it is interesting to maintain this value in the dataset.
+
 
 Let us now look to the violent crimes independently.
 We recall that the crimes considered to be violent in the United States are murder, rape, robbery and assault.
@@ -321,25 +330,36 @@ violPerPop <- cleandf[, (colnames(cleandf) %in% violPerPop_names)]
 
 ```{r, fig.height=6, fig.width=16}
 par(mfrow = c(1,2))
-boxplot(violPerPop, outline = TRUE, col = Col[seq(1:4)], main = "Violent Crimes per 100K Pop")
-boxplot(violPerPop, outline = FALSE, col = Col[seq(1:4)], main = "Violent Crimes per 100K Pop - Outliers not drawn")
+boxplot(violPerPop, outline = TRUE, col = Col[seq(1:4)],
+        main = "Violent Crimes per 100K Pop", 
+        names = c("murders", "rapes", "robberies", "assaults"))
+boxplot(violPerPop, outline = FALSE, col = Col[seq(1:4)],
+        main = "Violent Crimes per 100K Pop - Outliers not drawn",
+        names = c("murders", "rapes", "robberies", "assaults"))
 par(mfrow=c(1,1))
 ```
 
 From the boxplot it can be noticed that the most frequent violent crime is assault, as expected murders and rapes rapresent a minority.
+
+```{r, include=FALSE}
+# install.packages("plotly")
+library(plotly)
+```
 
 ```{r, fig.width=16, fig.height=5, eval=FALSE, include=FALSE}
 # Violent Crimes categories per 100K Population - State aggregation - Mean
 vc_cat_state <- aggregate(cleandf[, colnames(cleandf) %in% violPerPop_names], list(cleandf$state), mean)
 names(vc_cat_state)[names(vc_cat_state) == "Group.1"] <- "state"
 
-library(plotly)
-plot_ly(data=vc_cat_state, x = ~state, y = ~murdPerPop, type = 'bar', name = 'murders', marker = list(color = Rgb[1])) %>%
+plot_ly(data=vc_cat_state, x = ~state, y = ~murdPerPop, type = 'bar', name = 'murders',
+        marker = list(color = Rgb[1])) %>%
     add_trace(y = ~rapesPerPop, name = 'rapes', marker = list(color = Rgb[2])) %>%
-    add_trace(y = ~robbbPerPop, name = 'robbery', marker = list(color = Rgb[3])) %>%
-    add_trace(y = ~assaultPerPop, name = 'assault', marker = list(color = Rgb[4])) %>%
-    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'), barmode = 'stack')
+    add_trace(y = ~robbbPerPop, name = 'robberies', marker = list(color = Rgb[3])) %>%
+    add_trace(y = ~assaultPerPop, name = 'assaults', marker = list(color = Rgb[4])) %>%
+    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'), 
+           barmode = 'stack')
 ```
+
 
 ### Non Violent Crimes
 
@@ -359,8 +379,9 @@ summary(nvc_state$NonViolentCrimesMean)
 ```{r, warning=FALSE, fig.height=2.5, fig.align = "center"}
 par(mfrow=c(1,1))
 plot_usmap(data = nvc_state, values = "NonViolentCrimesMean", color = "black") +
-   scale_fill_continuous(trans="sqrt",low = Rgb[3], high = Rgb[1], name = "Non Violent Crimes",limits=c(2825,9252),
-label=scales::comma)+
+   scale_fill_continuous(trans="sqrt",low = Rgb[3], high = Rgb[1], 
+                         name = "Non Violent Crimes", limits=c(2825,9252),
+                         label=scales::comma) +
   theme(legend.position = "right")
 ```
 
@@ -369,7 +390,6 @@ We can see that the south-eastern states have the highest average rates again. H
 ```{r, fig.width=16, fig.height=5}
 barplot(nvc_state$NonViolentCrimesMean, names.arg = nvc_state$state, las=2, col=Col[2],
         main = "Non Violent Crimes per 100K population - Average per State")
-#nvc_state[nvc_state$NonViolentCrimesMean == max(nvc_state$ViolentCrimesMean),]
 ```
 
 Also in this case, we can notice that the highest average value is associated to the Disctrict of Columbia. This leads us to believe that there may be a particular phenomenon that affects the crime rate or how it is recorded in the capital region. 
@@ -386,25 +406,29 @@ nonViolPerPop <- cleandf[, (colnames(cleandf) %in% nonViolPerPop_names)]
 
 ```{r, fig.height = 6, fig.width= 16, fig.align = "center"}
 par(mfrow = c(1,2))
-boxplot(nonViolPerPop, outline = TRUE, col = Col[seq(1:4)], main = "Non Violent Crimes Per Pop")
-boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)], main = "Non Violent Crimes Per Pop")
+boxplot(nonViolPerPop, outline = TRUE, col = Col[seq(1:4)],
+        main="Non Violent Crimes Per Pop",
+        names = c("burglaries", "larcenies", "auto thefts", "arsons"))
+boxplot(nonViolPerPop, outline = FALSE, col = Col[seq(1:4)],
+        main="Non Violent Crimes Per Pop",
+        names = c("burglaries", "larcenies", "auto thefts", "arsons"))
 par(mfrow=c(1,1))
 ```
 
-Among the non-violent crimes, in general the most frequent are larcenies.
+Among the non violent crimes, in general the most frequent are larcenies.
 
 ```{r, fig.width=16, fig.height=5, eval=FALSE, include=FALSE}
 # Non Violent Crimes categories per 100K Population - State aggregation - Mean
 nvc_cat_state <- aggregate(cleandf[, colnames(cleandf) %in% nonViolPerPop_names], list(cleandf$state), mean)
 names(nvc_cat_state)[names(nvc_cat_state) == "Group.1"] <- "state"
 
-library(plotly)
-plot_ly(data=nvc_cat_state, x = ~state, y = ~burglPerPop, type = 'bar', name = 'burglary',
+plot_ly(data=nvc_cat_state, x = ~state, y = ~burglPerPop, type = 'bar', name = 'burglaries',
         marker = list(color = Rgb[1])) %>%
-    add_trace(y = ~larcPerPop, name = 'larceny', marker = list(color = Rgb[2])) %>%
-    add_trace(y = ~autoTheftPerPop, name = 'auto theft', marker = list(color = Rgb[3])) %>%
-    add_trace(y = ~arsonsPerPop, name = 'arson', marker = list(color = Rgb[4])) %>%
-    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'), barmode = 'stack')
+    add_trace(y = ~larcPerPop, name = 'larcenies', marker = list(color = Rgb[2])) %>%
+    add_trace(y = ~autoTheftPerPop, name = 'auto thefts', marker = list(color = Rgb[3])) %>%
+    add_trace(y = ~arsonsPerPop, name = 'arsons', marker = list(color = Rgb[4])) %>%
+    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'),
+           barmode = 'stack')
 ```
 
 ### Inspecting variables relation
@@ -434,7 +458,7 @@ Let us investigate if and how these clusters are cross-correlated through a scat
 ```{r, eval=FALSE}
 pairs(cleandf[,colnames(cleandf)%in% ViolCrimes.names], pch = 20)
 ```
-![](plot/data-exploration/corr-ViolCrimes.png){#id .class width=100% height=100%}
+![](../plot/data-exploration/corr-ViolCrimes.png){#id .class width=100% height=100%}
 
 The plot confirms what already said above: the variables related to the family structure pairly show an evident linear dependence, the same holds for the variables related to the marital status.
 
@@ -457,7 +481,7 @@ caucasian.corr <- viol.cm[,4]
 sort(caucasian.corr[abs(caucasian.corr)>0.5])
 ```
 
-The above considerations could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence, or, on the other hand, they could highlight the presence of the well known, but always tricky, confounding effect, about which we'll go into details below.
+The above considerations could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence, or, on the other hand, they could highlight the presence of the well known, but always tricky, confounding effect, about which we'll go into details further.
 Along with that, another fundamental factor has to be considered: a pretty famous social phenomenon, known as the *crack epidemic*, took place in the USA during the past 80s and 90s, period in which our data have been gathered. Shortly speaking, faced with dropping prices of cocaine powder, drug dealers made a decision to convert it to "crack", a solid smokeable form of cocaine, that could be sold in smaller quantities, to more people. It was cheap, simple to produce, ready to use, and highly profitable for dealers to develop, which made the new product spread rapidly and made the homicide rate for young black males more than doubled, due to the fact that the distribution of the drug to the end-user occurred mainly in low-income inner city neighborhoods: this gave many inner-city residents the opportunity to move up the "economic ladder" in a drug market, at the cost of violence to establish territorial control. Moreover, this habits caused a long term effect in the society, estending the phenomenon over its actual time period[2,3,4,5].
 
 We carry now the same analysis in order to understand which variables are more correlated (correlation>0.5) with the variable of non violent crimes.
@@ -479,9 +503,8 @@ We can observe that the most correlated variables are still those related to the
 
 ```{r, include=FALSE}
 # remove no more useful variables
-rm(list=setdiff(ls(), c("crimedata", "cleandf", "standf", "Col", Rgb)))
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf", "Col", "Rgb")))
 ```
-
 
 
 # Multiple linear regression
