@@ -1,37 +1,19 @@
 ---
-title: "Statistical Learning Final Exam Project"
-author: "Caria Natascia, Cozzolino Claudia and Petrella Alfredo"
-date: "18 giugno 2020"
-output:
-  pdf_document:
-    keep_tex: TRUE
+title: "Communities and Crime"
+subtitle: "Statistical Learning Final Exam Project"
+chapter: "Multiple Linear Regression"
+author: "Caria Natascia, Cozzolino Claudia, Petrella Alfredo"
+date: "June 20, 2020"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Multiple linear regression
-
-For almost the entire project, we decided to focus the analyzes on the ViolentCrimePerPop variable only, i.e. the rate of the sum of the violent crimes, according to the US laws, per population.
-In particular our main task is to predict this response from the socio-economic and demographic attributes per community provided by the dataset using a multiple linear regression model.
-
-For this purpose, we firstly remove non predictive variables, such as the community name and all the other crimes columns except for the ViolentCrimesPerPop response. Note that in this first study we also discarded the categorical attribute state, assuming it as not influential.
-
-
-```{r}
-# import cleaned dataset
-cleandf <- read.csv("crimedata-cleaned.csv", row.names = 1)
-dim(cleandf)
-```
-
-```{r} 
-standardization <- function(x) {
-return ((x - mean(x)) / sd(x))
-}
-
-standf <- cleandf
-standf[seq(3,dim(standf)[2])] <- lapply(standf[seq(3,dim(standf)[2])], standardization)
+```{r, include=FALSE}
+# set working directory
+# setwd("Project/code")
 ```
 
 ```{r, include=FALSE}
@@ -43,6 +25,18 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
         rgb(0.03, 0.23, 0.3, 0.7))
 ```
 
+# Multiple Linear Regression
+
+For almost the entire project, we decided to focus the analyzes on the ViolentCrimePerPop variable only, i.e. the rate of the sum of the violent crimes, according to the US laws, per population.
+In particular our main task is to predict this response from the socio-economic and demographic attributes per community provided by the dataset using a multiple linear regression model.
+
+For this purpose, we firstly remove non predictive variables, such as the community name and all the other crimes columns except for the ViolentCrimesPerPop response. Note that in this first study we also discarded the categorical attribute state, assuming it as not influential.
+
+```{r}
+# import cleaned and standardized dataset
+cleandf <- read.csv("../data/crimedata-cleaned.csv", row.names = 1)
+standf <- read.csv("../data/crimedata-cleaned-stand.csv", row.names = 1)
+```
 
 ```{r}
 coltodrop <- c(1,2, seq(103,120)[-17]) # -17 keeps ViolentCrimesPerPop
@@ -64,7 +58,7 @@ cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
 ```
 
-```{r}
+```{r, fig.height=10, fig.width=16}
 par(mfrow=c(2,2))
 plot(reg.out)
 par(mfrow=c(1,1))
@@ -76,8 +70,7 @@ To analyze in detail the results obtained from this first simple model, we recal
 The model assumptions are:
 
 - Linearity of the response-predictor relationships;
-- Homeschedasticity of the error terms: Var($\epsilon_i$) = $\sigma^2$;
-- Normality and Independence of the error terms $\epsilon_i$.
+- Homeschedasticity of the error terms: Var($\epsilon_i$) = $\sigma^2$.
 
 To check the conditions listed above we use the residual plots provided by lm.
 
@@ -86,48 +79,30 @@ The plot of residuals versus fitted values shows a little pattern, however it se
 
 ### Homoschedasticity
 The presence of a funnel shape in the residual plot suggests that the error terms do not have a constant variance. One possible
-solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt(Y)$ .
+solution is to transform the response variable $Y$ using a concave function such as $\log(Y)$ or $\sqrt{Y}$.
 
 With a trial and error approach we came out with the best transformation: $\log(Y)+1$, of which the resulting density is shown the following figures.
 
-
-```{r}
+```{r, fig.height=4, fig.width=8}
 par(mfrow=c(1,2))
-hist(cleandf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
-lines(density(cleandf$ViolentCrimesPerPop))
+hist(df$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes",
+     xlab = "ViolentCrimesPerPop")
+lines(density(df$ViolentCrimesPerPop))
 
-hist(log(cleandf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
-lines(density(log(cleandf$ViolentCrimesPerPop +1)))
+hist(log(df$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1],
+     main="log(Violent Crimes +1)", xlab = "log(ViolentCrimesPerPop +1)")
+lines(density(log(df$ViolentCrimesPerPop +1)))
 par(mfrow=c(1,1))
-
-
-par(mfrow=c(1,2))
-hist(standf$ViolentCrimesPerPop, prob=TRUE, breaks=30, col=Col[1], main="Violent Crimes")
-lines(density(standf$ViolentCrimesPerPop))
-
-hist(log(standf$ViolentCrimesPerPop +1), prob=TRUE, breaks=30, col=Col[1], main="log(Violent Crimes +1)")
-lines(density(log(standf$ViolentCrimesPerPop +1)))
-par(mfrow=c(1,1))
-
 ```
 
-```{r}
+```{r, fig.height=4, fig.width=8}
 par(mfrow=c(1,2))
-qqnorm(cleandf$ViolentCrimesPerPop, main="Violent Crimes")
-qqline(cleandf$ViolentCrimesPerPop)
+qqnorm(df$ViolentCrimesPerPop, main="Violent Crimes")
+qqline(df$ViolentCrimesPerPop)
 
-qqnorm(log(cleandf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
-qqline(log(cleandf$ViolentCrimesPerPop +1))
+qqnorm(log(df$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
+qqline(log(df$ViolentCrimesPerPop +1))
 par(mfrow=c(1,1))
-
-par(mfrow=c(1,2))
-qqnorm(standf$ViolentCrimesPerPop, main="Violent Crimes")
-qqline(standf$ViolentCrimesPerPop)
-
-qqnorm(log(standf$ViolentCrimesPerPop +1), main="log(Violent Crimes +1)")
-qqline(log(standf$ViolentCrimesPerPop +1))
-par(mfrow=c(1,1))
-
 ```
 
 At this point we fitted again the linear model using the transformed response.
@@ -145,16 +120,13 @@ cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
 ```
 
-```{r}
+```{r, fig.height=10, fig.width=16}
 par(mfrow=c(2,2)) 
 plot(reg.out2)
 par(mfrow=c(1,1))
 ```
 
 The plots of residuals versus fitted values shows that such a transformation leads to a reduction in heteroscedasticity, moreover it managed to considerably improve the statistic measures.
-
-### Normality and Independence of errors
-Finally, the only hypothesis left to check is the normality. We can assess this condition looking to the QQ plot: most of the points seem to coincide with the theoretical line, the only exceptions are those at the ends which reveal a distribution with heavier tails. This effect could be motivated by other problems, such as outliers, as shown below.
 
 
 ## Other Possible Problems
@@ -164,20 +136,18 @@ The residual plot identifies some outliers. However, it can be difficult to deci
 by dividing each residual $e_i$ by its estimated standard error. Observations whose studentized residuals are greater than 3 in
 absolute value are possible outliers.
 
-Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898. [ref biblio?].
+Note that the empirical motivation for the value equal to 3 is that the Studentized Residuals are approximated by a $N(0,1)$. The probability to observe a value greater than 3 is then 0.001349898[1].
 
 ```{r}
 1 - pnorm(3)
 ```
 
-```{r}
+```{r, fig.height=4, fig.width=6}
 plot(predict(reg.out2), rstandard(reg.out2), xlab="Fitted Values", ylab = "Studentized Residuals")
 
 abline(h=3, col = "red")
 abline(h=-3, col = "red")
 ```
-
-
 
 ```{r}
 out <- names(rstandard(reg.out2)[(abs(rstandard(reg.out2)) > 3)])
@@ -187,9 +157,8 @@ standf[out,c(1,2)]
 cityout<-standf$communityname[rownames(standf) %in% out]
 ```
 
-
 ```{r}
-citycord <- read.csv("cities.csv")
+citycord <- read.csv("../data/cities.csv")
 
 # Rename column 
 colnames(citycord)[colnames(citycord) == "city"] <- "communityname"
@@ -200,17 +169,18 @@ colnames(citycord)[colnames(citycord) == "longitude"] <- "lon"
 citycord<-merge(citycord,cleandf,by=c("state","communityname"))
 ```
 
-
 ```{r}
 dfplot <- citycord[citycord$communityname %in% cityout, c("lon","lat","ViolentCrimesPerPop","communityname")]
 ```
 
 Using this selection criterion, 20 communities are to be considered outliers. In a study like the one we are conducting, in which socio-economic, environmental and demographic information is fundamental, it might be interesting to investigate where these cities are located geographically. The following map shows the outliers communities with respect the ViolentCrimesPerPop variable. It can be noticed that the large majiority are clusterized in the state of NY and in the southern regions.
 
-```{r}
+```{r, include=FALSE}
 library(ggplot2)
-# install.packages("usmap")
 library(usmap)
+```
+
+```{r, warning=FALSE}
 
 cities_t <- usmap_transform(dfplot)
 
@@ -246,6 +216,7 @@ plot_usmap(fill = "#06D6A0", alpha = 0.25) +
 
 
 The results of the linear regressor fitted without the outliers are shown below.
+
 ```{r}
 # regression without outliers
 reg.out3 <- lm(log(ViolentCrimesPerPop+1)~., data=df[!(rownames(df) %in% out),])
@@ -260,7 +231,7 @@ cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
 ```
 
-```{r}
+```{r, fig.height=10, fig.width=16}
 par(mfrow=c(2,2)) 
 plot(reg.out3)
 par(mfrow=c(1,1))
@@ -270,9 +241,9 @@ As expected, the RSE is smaller: 0.56 when the outliers are included versus 0.52
 For the purpose of this work we have decided not to remove them, not only to avoid the risk of losing statistical information, but because they seem to have a geographical meaning and dropping them could make the study less consistent.
 
 ### High Leverage Points
-A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds (p+1)/n, then we may suspect that the corresponding point has high leverage.
+A second problem when dealing with regression is the presence of high leverage points. In order to quantify an observations leverage, we compute the leverage statistic. If a given observation has a leverage statistic that greatly exceeds $(p+1)/n$, then we may suspect that the corresponding point has high leverage.
 
-```{r}
+```{r, fig.height=4, fig.width=6}
 hv <- hatvalues(reg.out2)
 plot(hv, rstandard(reg.out2), xlab="Leverage", ylab = "Studentized Residuals")
 
@@ -281,7 +252,7 @@ n <- dim(df)[1]
 abline(v=(p+1)/n, col = "red")
 ```
 
-The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above 3(p+1)/n [ref biblio]. Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
+The previous figure shows that a lot of points fall to the right of the critical value, in order not to lose too much data we will consider high leverage only the points above $3(p+1)/n$ [8](https://online.stat.psu.edu/stat462/node/171/). Using this new rule it appears that 56 communities are to be considered high leverage, also in this case we decided to investigate the corresponding geographic locations through the map. In this particular case, they are drawn according to the total population.
 
 ```{r}
 lev <- names(hv[hv>3*(p+1)/n])
@@ -294,7 +265,7 @@ citylev<-standf$communityname[rownames(standf) %in% lev]
 dfplot<-citycord[citycord$communityname %in% citylev,c("lon","lat","communityname","state","population")]
 ```
 
-```{r}
+```{r, warning=FALSE}
 
 cities_t <- usmap_transform(dfplot)
 
@@ -345,7 +316,7 @@ cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
 ```
 
-```{r}
+```{r, fig.height=10, fig.width=16}
 par(mfrow=c(2,2))
 plot(reg.out4)
 par(mfrow=c(1,1))
@@ -375,28 +346,27 @@ of the predictors.
 
 #### Correlation insight
 
-In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless.
+In the following few lines of code we perform a first manual skimming of strongly dependent variables removing, between the most correlated ones, the more redundant and meaningless. It would have been possible to use a simple for loop or an *ad hoc* package, such as *caret*, to filter out some of the most correlated columns to clean up and resize the dataset, but due to the possibly problematic interactions among variables we talked above about, we preferred to follow a more guided path. In the analysis just the numerical predicting variables and the two main target variables are kept, to highlight eventual correlation-related issues.
 
-
-
-[***Alfre scelgo teeeeee***]
-```{r}
+```{r, include=FALSE}
 # install.packages('corrplot')
 library(corrplot)
+```
 
+```{r}
 # restrict to the predictive numeric attributes
-coltodrop <- c(1,2, seq(103,120))
+coltodrop <- c(1,2, seq(103,118))
 corrdf <- cleandf[,-coltodrop]
 
 # correlation matrix
 cm <- cor(corrdf, use='complete.obs')
 
-
+par(mfrow=c(1,2))
 # correlation matrix plot
-corrplot(cm,title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
+corrplot(cm, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35) # order=!!!
 
-# correlation tradeoff
-threshold <- 0.7
+# correlation thrashold
+threshold <- 0.8
 # only strongly correlated attributes highlighted
 cma <- abs(cm) > threshold
 # number of strong correlations
@@ -405,12 +375,34 @@ cma <- abs(cm) > threshold
 # filtered correlation matrix plot
 corrplot(cma, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
+par(mfrow=c(1,1))
 ```
 
-??? Spiega le scelte e soprattutto quella a 0.7!
+```{r}
+# correlation tradeoff
+threshold <- 0.55
+# only strongly correlated attributes
+cma <- abs(cm) > threshold
+# strongly correlated attributes to "ViolentCrimesPerPop"
+names(cma[101,][cma[101,]])
+```
+
+With a threshold of 0.8 no response variable is significanly correlated to any predictor, while at 0.7 "PctKids2Par" and "PctKidsBornNeverMar" appear to be correlated to "ViolentCrimesPerPop". Only when we lower it to 0.55, due to the mutual correlation between the previously mantioned predictors and the new ones, socio-cultural factors show up, highlighting a probable confounding effect hidden between the variables. It is in fact kindly that, in case of non-American-born people, due to law differences between states and logistic problems, a huge number of such families results in analogous conditions to the ones actually without at least one parent, which is a leading condition among the ones positively correlated to the response.
+
+With this in mind, thanks to the following few lines of code, we handle the more correlated variables, trying, at the same time, to preserve as many columns as possible to preserve the original structure of our dataset.
+
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
+We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
+Some relevant examples of columns dropped in the resulting process are:
+
+* "population", due to the presence of both absolute and percent measurement of many variables;
+* "agePct16t24" and other redundant columns computed on overlapping time periods;
+* "OwnOccHiQuart" and other statistics strictly related to other ones (such as the median).
 
 ```{r}
 # columns with correlation with more meaningful ones higher than threshold in absolute value
+
+threshold <- 0.8
 
 rem9 <- c( 
 "population","agePct16t24","numbUrban","pctWSocSec","medFamInc","perCapInc",
@@ -439,38 +431,17 @@ corrdf_ind <- corrdf[,!(colnames(corrdf) %in% rem8)]
 cm_ind <- cor(corrdf_ind, use='complete.obs')
 cma_ind <- abs(cm_ind) > threshold
 
-par(mfrow=c(1,1))
+par(mfrow=c(1,2))
 # resulting filtered correlation matrix plot
-corrplot(cma_ind, title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
-
-# 0.9
-# OK perCapInc del. vs whitePerCap (21 del. vs 22, use average)
-# OK PctBSorMore kept vs PctOccupMgmtProf (32 kept vs 38, solved by 0.8)
-# OK NumKidsBornNeverMar del. vs NumImmig (50 del. vs 52, solved by 0.8)
-# 0.8
-# OK racepvtblack vs racePctWhite (3 kept vs 4, let's keep minorities)
-# OK agePct12t21 kept vs agePct12t29 (7 kept vs 8, solved by 0.7)
-# OK medIncome del. vs whitePerCap (13 del. vs 22, use average)
-# OK pctWPubAsst del. vs PctUnemployed (18 del. vs 33, solved by 0.7)
-# OK PctPopUnderPov del. vs PctHousNoPhone (29 del. vs 78, solved by 0.7)
-# OK PctYoungKids2Par del. vs PctTeen2Par (46 del. vs 47, solved by 0.7)
-# OK PctWorkMomYoungKids kept vs PctWorkMom (48 kept vs 49, unanimity)
-# OK PctImmigRecent kept vs PctImmigRec8 (53 kept vs 55)
-# OK PctSameHouse85 kept vs PctSameCity85 (94 kept vs 95, more informative)
-# 0.7
-# OK NumImmig and HousVacant (52 and 72, unanimity)
+corrplot(cma_ind, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
 # final correlation matrix plot
-corrplot(cm_ind, title=, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
+corrplot(cm_ind, method='color', type='lower', tl.pos='l', tl.col='black', tl.cex=0.35)
 
 par(mfrow=c(1,1))
 ```
 
-
-
-When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression fit, since the presence of collinearity implies that the information is redundant. The second solution is to combine the collinear variables together into a single predictor.
-We decided to proceed in the first way, thus eliminating the redundant columns resulting from the study above, in particular considering variables with correlarion above 0.8.
-
+Let's now fit a linear model on the new obtained dataframe to see how it performs.
 
 ```{r}
 corrdf <- df[,!(colnames(df) %in% rem8)]
@@ -486,12 +457,46 @@ cat("R^2:", round(rsq,2), "\n")
 cat("adjusted R^2:", round(adrsq,2))
 ```
 
-```{r}
+```{r, fig.height=10, fig.width=16}
 par(mfrow=c(2,2))
 plot(reg.out5)
 par(mfrow=c(1,1))
 ```
+
 It is possible to notice that the model fitted from the remained 52 predictors performs better than the model obtained with all the 100 ones: the RSE decreases from 0.59 to 0.58 while the adjusted $R^2$ increases from 0.65 to 0.66. This demonstrates the importance of careful analysis of the collinearity problem, eliminating redundant information not only simplifies the model, but makes it more robust.
 
 From this point on, only the 52 variables selected in this section will be considered for the rest of the study.
 
+```{r, include=FALSE}
+# remove no more useful variables
+rm(list=setdiff(ls(), c("cleandf","crimedata","standf","corrdf","Col")))
+```
+
+```{r, eval=FALSE}
+# save corrdf to CSV 
+write.csv(corrdf, "../data/crimedata-corr.csv", row.names=TRUE)
+```
+
+\newpage
+
+# References
+
+[1] "An Introduction to Statistical Learning", G. James, D. Witten, T. Hastie and R. Tibshirani, Springer, 2013.
+
+[2] "DEA History Book, 1876–1990" (drug usage & enforcement), US Department of Justice, 1991, USDoJ.gov, webpage: DoJ-DEA-History-1985-1990.
+
+[3] "Guns and Violence: The Enduring Impact of Crack Cocaine Markets on Young Black Males", W.N. Evans, G. Garthwaite, T. Moore, 2018.
+
+[4] "Measuring Crack Cocaine and Its Impact", Fryer, Roland. Harvard University Society of Fellows: 3, 66. Retrieved January 4, 2016.
+
+[5] "The New Jim Crow: Mass Incarceration in the Age of Colorblindness", M. Alexander.
+
+[6] http://www.disastercenter.com/crime/uscrime.htm
+
+[7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
+
+[8] https://online.stat.psu.edu/stat462/node/171/.
+
+[9] https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
+
+[10] https://towardsdatascience.com/the-mathematics-behind-principal-component-analysis-fff2d7f4b643
