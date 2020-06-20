@@ -1,11 +1,10 @@
 ---
 title: "Communities and Crime"
 subtitle: "Statistical Learning Final Exam Project"
+chapter: "Exploratory Data Analysis"
 author: "Caria Natascia, Cozzolino Claudia, Petrella Alfredo"
-date: "17/6/2020"
-output:
-  pdf_document:
-    keep_tex: TRUE
+date: "June 20, 2020"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -14,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, include=FALSE}
 # set working directory
-# setwd("C:/Users/Natascia/Desktop/DataS_2/Stat_B/Project/CommunitiesAndCrimes/SL-B-master")
+# setwd("Project/code")
 ```
 
 ```{r, include=FALSE}
@@ -30,7 +29,7 @@ Rgb = c(rgb(0.94, 0.28, 0.44, 0.7),
 
 ```{r}
 # import cleaned dataset
-cleandf <- read.csv("crimedata-cleaned.csv", row.names = 1)
+cleandf <- read.csv("../data/crimedata-cleaned.csv", row.names = 1)
 dim(cleandf)
 ```
 
@@ -70,7 +69,7 @@ par(mfrow=c(1,1))
 plot_usmap(data = vc_state, values = "ViolentCrimesMean", color = "black") +
    scale_fill_continuous(trans="sqrt", low = Rgb[3], high = Rgb[1],
                          name = "Viol Crimes 100K pop", limits=c(85,3049),
-                         label=scales::comma)+
+                         label=scales::comma) +
   theme(legend.position = "right")
 ```
 
@@ -110,18 +109,23 @@ par(mfrow=c(1,1))
 
 From the boxplot it can be noticed that the most frequent violent crime is assault, as expected murders and rapes rapresent a minority.
 
+```{r, include=FALSE}
+# install.packages("plotly")
+library(plotly)
+```
+
 ```{r, fig.width=16, fig.height=5, eval=FALSE, include=FALSE}
 # Violent Crimes categories per 100K Population - State aggregation - Mean
 vc_cat_state <- aggregate(cleandf[, colnames(cleandf) %in% violPerPop_names], list(cleandf$state), mean)
 names(vc_cat_state)[names(vc_cat_state) == "Group.1"] <- "state"
 
-library(plotly)
 plot_ly(data=vc_cat_state, x = ~state, y = ~murdPerPop, type = 'bar', name = 'murders',
         marker = list(color = Rgb[1])) %>%
     add_trace(y = ~rapesPerPop, name = 'rapes', marker = list(color = Rgb[2])) %>%
     add_trace(y = ~robbbPerPop, name = 'robberies', marker = list(color = Rgb[3])) %>%
     add_trace(y = ~assaultPerPop, name = 'assaults', marker = list(color = Rgb[4])) %>%
-    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'), barmode = 'stack')
+    layout(xaxis = list(title='State', tickangle = 270), yaxis=list(title = 'Count'), 
+           barmode = 'stack')
 ```
 
 
@@ -186,7 +190,6 @@ Among the non violent crimes, in general the most frequent are larcenies.
 nvc_cat_state <- aggregate(cleandf[, colnames(cleandf) %in% nonViolPerPop_names], list(cleandf$state), mean)
 names(nvc_cat_state)[names(nvc_cat_state) == "Group.1"] <- "state"
 
-library(plotly)
 plot_ly(data=nvc_cat_state, x = ~state, y = ~burglPerPop, type = 'bar', name = 'burglaries',
         marker = list(color = Rgb[1])) %>%
     add_trace(y = ~larcPerPop, name = 'larcenies', marker = list(color = Rgb[2])) %>%
@@ -223,9 +226,7 @@ Let us investigate if and how these clusters are cross-correlated through a scat
 ```{r, eval=FALSE}
 pairs(cleandf[,colnames(cleandf)%in% ViolCrimes.names], pch = 20)
 ```
-
-
-![](plot/data-exploration/corr-ViolCrimes.png){#id .class width=100% height=100%}
+![](../plot/data-exploration/corr-ViolCrimes.png){#id .class width=100% height=100%}
 
 The plot confirms what already said above: the variables related to the family structure pairly show an evident linear dependence, the same holds for the variables related to the marital status.
 
@@ -248,8 +249,8 @@ caucasian.corr <- viol.cm[,4]
 sort(caucasian.corr[abs(caucasian.corr)>0.5])
 ```
 
-This could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence.
-
+The above considerations could lead us to think that in general African American families have a more fragile structure that could be a risk factor for the exposure of young people to illegality and violence, or, on the other hand, they could highlight the presence of the well known, but always tricky, confounding effect, about which we'll go into details further.
+Along with that, another fundamental factor has to be considered: a pretty famous social phenomenon, known as the *crack epidemic*, took place in the USA during the past 80s and 90s, period in which our data have been gathered. Shortly speaking, faced with dropping prices of cocaine powder, drug dealers made a decision to convert it to "crack", a solid smokeable form of cocaine, that could be sold in smaller quantities, to more people. It was cheap, simple to produce, ready to use, and highly profitable for dealers to develop, which made the new product spread rapidly and made the homicide rate for young black males more than doubled, due to the fact that the distribution of the drug to the end-user occurred mainly in low-income inner city neighborhoods: this gave many inner-city residents the opportunity to move up the "economic ladder" in a drug market, at the cost of violence to establish territorial control. Moreover, this habits caused a long term effect in the society, estending the phenomenon over its actual time period[2,3,4,5].
 
 We carry now the same analysis in order to understand which variables are more correlated (correlation>0.5) with the variable of non violent crimes.
 
@@ -269,6 +270,31 @@ sort(nonViol.corr[abs(nonViol.corr)>0.5])
 We can observe that the most correlated variables are still those related to the family structure, the marital status and poverty.
 
 ```{r, include=FALSE}
-# Remove all variables from environment excpet the cleaned and the original dataset
+# remove no more useful variables
 rm(list=setdiff(ls(), c("cleandf","crimedata","standf", "Col", "Rgb")))
 ```
+
+
+\newpage
+
+# References
+
+[1] "An Introduction to Statistical Learning", G. James, D. Witten, T. Hastie and R. Tibshirani, Springer, 2013.
+
+[2] "DEA History Book, 1876–1990" (drug usage & enforcement), US Department of Justice, 1991, USDoJ.gov, webpage: DoJ-DEA-History-1985-1990.
+
+[3] "Guns and Violence: The Enduring Impact of Crack Cocaine Markets on Young Black Males", W.N. Evans, G. Garthwaite, T. Moore, 2018.
+
+[4] "Measuring Crack Cocaine and Its Impact", Fryer, Roland. Harvard University Society of Fellows: 3, 66. Retrieved January 4, 2016.
+
+[5] "The New Jim Crow: Mass Incarceration in the Age of Colorblindness", M. Alexander.
+
+[6] http://www.disastercenter.com/crime/uscrime.htm
+
+[7] https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime+Unnormalized
+
+[8] https://online.stat.psu.edu/stat462/node/171/.
+
+[9] https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/mean-squared-logarithmic-error-(msle)
+
+[10] https://towardsdatascience.com/the-mathematics-behind-principal-component-analysis-fff2d7f4b643
