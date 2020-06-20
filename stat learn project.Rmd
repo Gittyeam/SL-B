@@ -1798,12 +1798,9 @@ to split "ViolentCrimesPerPop" in the "High" and "Low" classes: a classical logi
 to test a non-linear and non-parametric approach.
 
 As for the effectiveness of the model, it turned out that the binary classifiers have a rewarding accuracy of 80-85%,
-while the regression models reach barely sufficient results: even with a valuable adjusted $R^2$ of ???, the logarithmic
-tranformation applied to the target variable led us to compute a MSLE of 0.???, which says that the average ratio between the
-predicted value +1 and the true value +1 is ???. This is mainly due to the fact that a linear model (and in general a polinomial one,
-which gave similar results), is not enough to fit the complexity of the data, as we expected given the complexity of the task even
-from a social perspective. Furthermore, a huge limitation was the really poor quality of the LEMAS dataset,
-the one gathered from the police departments, and this didn't allowed us to perform a parallel study to investigate a more local point of view.
+while the regression models reach barely sufficient results: in the Principal Component regression, even with a valuable
+adjusted $R^2$ of 65%, the logarithmic tranformation applied to the target variable led us to compute a MSLE of 0.35,
+which says that the average ratio between the predicted value +1 and the true value +1 is $\sqrt(e^\text{MSLE})=1.81^{(\pm 1)}$. This is mainly due to the fact that a linear model (and in general a polinomial one, which gave similar results), is not enough to fit the complexity of the data, as we expected given the complexity of the task even from a social perspective. Furthermore, a huge limitation was the really poor quality of the LEMAS dataset, the one gathered from the police departments, and this didn't allow us to perform a parallel study to investigate a more local point of view.
 
 At the end of the story, we tried to apply our knowledge in statistical learning to reach a satisfying level of comprehension
 of our data and the structures behind them, realizing that this is a task that goes beyond the concatenation of mathematical models,
